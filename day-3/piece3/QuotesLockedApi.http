@@ -1,0 +1,33 @@
+@host = https://localhost:5001
+@accessToken = paste-access-token-here
+@refreshToken = paste-refresh-token-here
+
+### Login as writer
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "writer@quotes.local",
+  "password": "WriterPassword123!"
+}
+
+### Refresh token rotation
+POST {{host}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Mutating endpoint protected by scope policy
+PUT {{host}}/quotes/1
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "text": "Updated quote"
+}
+
+### Mutating endpoint protected by custom ownership policy
+DELETE {{host}}/quotes/1
+Authorization: Bearer {{accessToken}}
