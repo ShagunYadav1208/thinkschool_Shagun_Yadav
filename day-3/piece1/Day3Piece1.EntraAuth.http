@@ -1,0 +1,19 @@
+@host = https://localhost:5001
+@entraAccessToken = paste-entra-access-token-here
+
+### Get an internal test token
+POST {{host}}/auth/internal-token
+Content-Type: application/json
+
+{
+  "clientId": "internal-worker",
+  "clientSecret": "local-dev-secret"
+}
+
+### Internal-only endpoint
+GET {{host}}/api/internal-report
+Authorization: Bearer paste-internal-token-here
+
+### Entra-only endpoint
+GET {{host}}/api/spa-profile
+Authorization: Bearer {{entraAccessToken}}
