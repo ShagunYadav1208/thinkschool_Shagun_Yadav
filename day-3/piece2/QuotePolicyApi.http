@@ -1,0 +1,24 @@
+@host = https://localhost:5001
+@token = paste-token-here
+
+### Issue a token with write scope
+POST {{host}}/auth/token
+Content-Type: application/json
+
+{
+  "subject": "user-123",
+  "scope": "quotes.write"
+}
+
+### Claim-based policy: requires scope=quotes.write
+PUT {{host}}/quotes/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "text": "Updated quote"
+}
+
+### Custom policy: requires the user to own the route quoteId
+DELETE {{host}}/quotes/1
+Authorization: Bearer {{token}}
