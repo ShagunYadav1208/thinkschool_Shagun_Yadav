@@ -1,0 +1,1 @@
+Refactor order validation into independent strategies. This keeps each business rule isolated and lets new validation rules be added without editing OrderService. A future rule could be registered in the wrong order or omit a null guard, so the pipeline tests and rule ordering need to remain reviewed.
