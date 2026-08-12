@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="QuotesIntegrationApi/QuotesIntegrationApi.csproj" />
+  <Project Path="Quotes.Tests.Integration/Quotes.Tests.Integration.csproj" />
+</Solution>

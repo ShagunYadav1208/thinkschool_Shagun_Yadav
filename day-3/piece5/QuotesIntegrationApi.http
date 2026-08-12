@@ -1,0 +1,30 @@
+@host = https://localhost:5001
+@accessToken = paste-token-from-auth-token-response-here
+
+### Issue a dev token
+POST {{host}}/auth/token
+Content-Type: application/json
+
+{
+  "subject": "writer-1"
+}
+
+### List quotes (public)
+GET {{host}}/api/quotes?page=1&size=10
+
+### Get a quote by id (public)
+GET {{host}}/api/quotes/1
+
+### Create a quote (requires bearer token)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "author": "Ada Lovelace",
+  "text": "That brain of mine is something more than merely mortal."
+}
+
+### Delete a quote (requires bearer token)
+DELETE {{host}}/api/quotes/1
+Authorization: Bearer {{accessToken}}
