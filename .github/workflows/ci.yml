@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "day-4/piece1/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "day-4/piece1/**"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_PATH: day-4/piece1
+  COVERAGE_THRESHOLD: 70
+
+jobs:
+  build-and-test:
+    name: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore "$PROJECT_PATH"
+
+      - name: Build
+        run: dotnet build "$PROJECT_PATH" --no-restore --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test "$PROJECT_PATH"
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory "$PROJECT_PATH/TestResults"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ${{ env.PROJECT_PATH }}/TestResults/**/test-results.trx
+          if-no-files-found: error
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ${{ env.PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml
+          if-no-files-found: error
+
+      # dotnet test's --collect:"XPlat Code Coverage" has no built-in threshold gate,
+      # so ReportGenerator turns the raw Cobertura XML into a line-coverage number
+      # that the next step can compare against COVERAGE_THRESHOLD.
+      - name: Compute coverage summary
+        run: |
+          set -euo pipefail
+          dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.4.7
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          reportgenerator \
+            -reports:"$PROJECT_PATH/TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"$PROJECT_PATH/CoverageReport" \
+            -reporttypes:TextSummary
+
+          cat "$PROJECT_PATH/CoverageReport/Summary.txt"
+
+      - name: Enforce coverage threshold
+        run: |
+          set -euo pipefail
+          LINE_COVERAGE=$(grep -oP 'Line coverage: \K[0-9.]+' "$PROJECT_PATH/CoverageReport/Summary.txt")
+          echo "Line coverage: ${LINE_COVERAGE}% (threshold: ${COVERAGE_THRESHOLD}%)"
+
+          if awk -v cov="$LINE_COVERAGE" -v min="$COVERAGE_THRESHOLD" 'BEGIN { exit !(cov < min) }'; then
+            echo "::error::Line coverage ${LINE_COVERAGE}% is below the ${COVERAGE_THRESHOLD}% threshold"
+            exit 1
+          fi
