@@ -1,0 +1,42 @@
+// KQL reference queries for this app's Application Insights resource.
+// Run these in the Azure Portal: App Insights resource -> Logs.
+
+// ---------------------------------------------------------------------------
+// Exercise deliverable: slowest 10 requests in the last hour.
+// ---------------------------------------------------------------------------
+requests
+| where timestamp > ago(1h)
+| order by duration desc
+| take 10
+| project timestamp, name, duration, resultCode, success, cloud_RoleName, operation_Id
+
+// ---------------------------------------------------------------------------
+// Find every log line for one user's request, most recent first — the
+// exercise's own example, adapted. Works because logger.LogInformation(
+// "... {UserId} ...", userId) in Program.cs becomes a customDimensions.UserId
+// field once UseAzureMonitor() exports it — no extra wiring needed.
+// ---------------------------------------------------------------------------
+traces
+| where timestamp > ago(15m)
+| where customDimensions.UserId == "user-77"
+| order by timestamp asc
+
+// ---------------------------------------------------------------------------
+// The exact query behind the alert in infra/main.bicep: average response
+// time of POST /api/quotes, bucketed into 5-minute windows.
+// ---------------------------------------------------------------------------
+requests
+| where name == "POST /api/quotes"
+| summarize AvgDurationMs = avg(duration) by bin(timestamp, 5m)
+| order by timestamp desc
+
+// ---------------------------------------------------------------------------
+// Follow one request end-to-end across the app's own custom span and EF
+// Core's query span, by trace ID (same ID Serilog and Jaeger both use —
+// see Day 4 Piece 4).
+// ---------------------------------------------------------------------------
+dependencies
+| where operation_Id == "d96adb2eca7f4005ca96298efdcbf61b"
+| union (requests | where operation_Id == "d96adb2eca7f4005ca96298efdcbf61b")
+| order by timestamp asc
+| project timestamp, itemType, name, duration, success
