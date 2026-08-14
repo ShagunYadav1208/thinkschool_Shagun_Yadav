@@ -1,0 +1,47 @@
+{
+  "capturedFrom": "http://localhost:16686/api/traces/029aae18e16903973f96864818935f5d",
+  "traceId": "029aae18e16903973f96864818935f5d",
+  "endpoint": "GET /api/quotes/author-stats",
+  "scenario": "BEFORE fix \u2014 N+1 query (one COUNT query per quote row)",
+  "seedData": "300 quotes across 6 authors",
+  "rootSpan": {
+    "operationName": "GET /api/quotes/author-stats",
+    "durationMicroseconds": 26180,
+    "durationMs": 26.18
+  },
+  "databaseSpans": {
+    "count": 301,
+    "operationName": "main (SQLite command execution)",
+    "totalDurationMicroseconds": 7639,
+    "avgDurationMicroseconds": 25.4,
+    "minDurationMicroseconds": 18,
+    "maxDurationMicroseconds": 226
+  },
+  "sampleSpans": [
+    {
+      "spanId": "b3219925dd1b280c",
+      "durationMicroseconds": 21,
+      "dbStatement": "SELECT COUNT(*)\r\nFROM \"Quotes\" AS \"q\"\r\nWHERE \"q\".\"Author\" = @quote_Author",
+      "dbSystem": "sqlite"
+    },
+    {
+      "spanId": "14225ec3f2a3a1d5",
+      "durationMicroseconds": 18,
+      "dbStatement": "SELECT COUNT(*)\r\nFROM \"Quotes\" AS \"q\"\r\nWHERE \"q\".\"Author\" = @quote_Author",
+      "dbSystem": "sqlite"
+    },
+    {
+      "spanId": "3b66ef4e70f641d5",
+      "durationMicroseconds": 127,
+      "dbStatement": "SELECT COUNT(*)\r\nFROM \"Quotes\" AS \"q\"\r\nWHERE \"q\".\"Author\" = @quote_Author",
+      "dbSystem": "sqlite"
+    },
+    {
+      "spanId": "bdbc65874b34ef2b",
+      "durationMicroseconds": 19,
+      "dbStatement": "SELECT COUNT(*)\r\nFROM \"Quotes\" AS \"q\"\r\nWHERE \"q\".\"Author\" = @quote_Author",
+      "dbSystem": "sqlite"
+    }
+  ],
+  "diagnosis": "300 quotes seeded across 6 authors. The endpoint issues 1 query to list all quotes, then loops over every row and issues a SEPARATE 'SELECT COUNT(*) FROM Quotes WHERE Author = @quote_Author' query per row \u2014 301 total database round trips for a single HTTP request, all visible as individual child spans under the request span."
+}

@@ -1,0 +1,69 @@
+// KQL reference queries for this app's Application Insights resource.
+// Run these in the Azure Portal: App Insights resource -> Logs.
+//
+// This app doesn't have a live Application Insights resource in this environment (see README
+// for what's real vs. simulated), but these queries are written against the real, standard
+// App Insights schema (requests, dependencies) and are the same shapes that would have caught
+// the /api/quotes/author-stats N+1 bug this piece diagnoses locally with Jaeger.
+
+// ---------------------------------------------------------------------------
+// Bonus deliverable: find endpoints that look like they have an N+1 problem —
+// a request whose average dependency (DB) call count per operation is unusually
+// high relative to its peers. A single grouped query does 1-2 DB calls per
+// request; an N+1 query does one per row, so it stands out immediately once
+// dependency counts are aggregated per request instead of looked at in isolation.
+// ---------------------------------------------------------------------------
+dependencies
+| where timestamp > ago(1h)
+| where type == "SQL" or name has "SELECT"
+| summarize dbCallCount = count() by operation_Id
+| join kind=inner (
+    requests
+    | where timestamp > ago(1h)
+    | project operation_Id, name, duration, timestamp
+) on operation_Id
+| summarize
+    avgDbCallsPerRequest = avg(dbCallCount),
+    maxDbCallsPerRequest = max(dbCallCount),
+    avgDurationMs = avg(duration),
+    sampleCount = count()
+    by name
+| where avgDbCallsPerRequest > 10          // a handful of joins/lookups is normal; dozens-to-hundreds is not
+| order by avgDbCallsPerRequest desc
+
+// ---------------------------------------------------------------------------
+// Simpler version of the same idea: slowest 10 requests in the last hour
+// (this is what the Day 4 Piece 5 exercise deliverable already used — still the
+// fastest way to spot a slow endpoint before digging into *why* it's slow).
+// ---------------------------------------------------------------------------
+requests
+| where timestamp > ago(1h)
+| order by duration desc
+| take 10
+| project timestamp, name, duration, resultCode, success, cloud_RoleName, operation_Id
+
+// ---------------------------------------------------------------------------
+// Once a suspect endpoint is found (e.g. "GET /api/quotes/author-stats"),
+// confirm the N+1 shape directly: many near-identical dependency calls sharing
+// one operation_Id, each cheap on its own but numerous.
+// ---------------------------------------------------------------------------
+dependencies
+| where timestamp > ago(1h)
+| where name == "GET /api/quotes/author-stats"
+    or operation_Id in (
+        requests
+        | where name == "GET /api/quotes/author-stats"
+        | project operation_Id
+    )
+| summarize callCount = count(), avgDurationMs = avg(duration), totalDurationMs = sum(duration) by operation_Id, data
+| order by callCount desc
+
+// ---------------------------------------------------------------------------
+// Follow one request end-to-end across the app's own custom span and EF
+// Core's query spans, by trace ID (same ID Serilog and Jaeger both use).
+// ---------------------------------------------------------------------------
+dependencies
+| where operation_Id == "REPLACE_WITH_REAL_OPERATION_ID"
+| union (requests | where operation_Id == "REPLACE_WITH_REAL_OPERATION_ID")
+| order by timestamp asc
+| project timestamp, itemType, name, duration, success

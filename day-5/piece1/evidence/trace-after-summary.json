@@ -1,0 +1,30 @@
+{
+  "capturedFrom": "http://localhost:16686/api/traces/20309a4408db1ac5eb910d5c35eb550b",
+  "traceId": "20309a4408db1ac5eb910d5c35eb550b",
+  "endpoint": "GET /api/quotes/author-stats",
+  "scenario": "AFTER fix \u2014 one GROUP BY query replaces the per-row COUNT loop",
+  "seedData": "300 quotes across 6 authors (same database as the before trace)",
+  "rootSpan": {
+    "operationName": "GET /api/quotes/author-stats",
+    "durationMicroseconds": 3819,
+    "durationMs": 3.82
+  },
+  "databaseSpans": {
+    "count": 2,
+    "spans": [
+      {
+        "spanId": "c39230a4125d34a6",
+        "durationMicroseconds": 295,
+        "dbStatement": "SELECT \"q\".\"Author\", COUNT(*) AS \"Count\"\r\nFROM \"Quotes\" AS \"q\"\r\nGROUP BY \"q\".\"Author\"",
+        "dbSystem": "sqlite"
+      },
+      {
+        "spanId": "41975de91425ca20",
+        "durationMicroseconds": 123,
+        "dbStatement": "SELECT \"q\".\"Id\", \"q\".\"Author\", \"q\".\"CreatedAt\", \"q\".\"Text\"\r\nFROM \"Quotes\" AS \"q\"\r\nORDER BY \"q\".\"Id\"",
+        "dbSystem": "sqlite"
+      }
+    ]
+  },
+  "diagnosis": "Same 300-quote database as the before trace. The endpoint now issues exactly 2 database queries total regardless of row count: one to list the quotes, one GROUP BY query that computes every author's count in a single round trip. 301 child spans collapsed to 2, and root span duration dropped from ~26ms to ~3.8ms in steady state (after JIT warm-up)."
+}
