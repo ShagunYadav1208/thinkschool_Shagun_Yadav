@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ResilientClient/ResilientClient.csproj" />
+  <Project Path="ResilientClient.Tests/ResilientClient.Tests.csproj" />
+</Solution>
