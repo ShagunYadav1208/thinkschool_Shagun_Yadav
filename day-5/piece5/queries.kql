@@ -1,0 +1,45 @@
+// KQL for this exercise's Application Insights resource.
+// Run these in the Azure Portal: App Insights resource -> Logs.
+//
+// A real deployment did briefly exist this session (see ../README.md), and
+// scripts/verify-and-save-function.sh started running against it — but every resource was deleted
+// before the script reached this query, so it has still never actually executed against live data.
+// Written and checked for correct KQL syntax against the real, standard `requests` table schema
+// (same one used in Day 4 Piece 5's queries.kql), not copied blind from the exercise.
+
+// ---------------------------------------------------------------------------
+// Exercise deliverable, verbatim: count/p50/p99 duration per endpoint, last 30 minutes.
+// ---------------------------------------------------------------------------
+requests
+| where timestamp > ago(30m)
+| summarize count(), p50=percentile(duration, 50), p99=percentile(duration, 99) by name
+| order by p99 desc
+
+// ---------------------------------------------------------------------------
+// The same query, saved as a reusable function. This is the actual mechanism behind the Logs
+// tab's "Save > Save as function" button: the portal wraps whatever query you're looking at in a
+// named `let` binding with your chosen name, stored against the workspace, callable later like
+// any other table. Doing it explicitly here (rather than only through the UI) means this is
+// version-controlled and reviewable, not just a click I can't screenshot.
+//
+// `lookback` defaults to 30m (matching the exercise), but can be overridden per call —
+// EndpointLatencySummary(1h) for the last hour, EndpointLatencySummary(7d) for the last week.
+// ---------------------------------------------------------------------------
+let EndpointLatencySummary = (lookback:timespan=30m) {
+    requests
+    | where timestamp > ago(lookback)
+    | summarize
+        RequestCount = count(),
+        p50 = percentile(duration, 50),
+        p99 = percentile(duration, 99)
+        by name
+    | order by p99 desc
+};
+EndpointLatencySummary()
+
+// To actually save this as a workspace function once a real App Insights resource exists:
+//   1. Paste the `let EndpointLatencySummary = ...` block (without the trailing call) into Logs.
+//   2. Run it once so the portal can parse it, then click Save -> Save as function.
+//   3. Name it "EndpointLatencySummary", give it the category "Performance" (or your preference).
+//   4. From then on, `EndpointLatencySummary()` or `EndpointLatencySummary(1h)` works from any
+//      query in this workspace, including from other saved queries, workbooks, or alert rules.
