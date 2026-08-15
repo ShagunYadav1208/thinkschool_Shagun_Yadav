@@ -61,40 +61,38 @@ public static class QuoteEndpointExtensions
             ILogger<Program> logger,
             CancellationToken cancellationToken) =>
         {
-            var validationErrors = new Dictionary<string, string[]>();
+            try
+            {
+                var created = await quoteService.CreateAsync(
+                    request,
+                    cancellationToken);
 
-            if (string.IsNullOrWhiteSpace(request.Author))
-                validationErrors["author"] = ["Author is required."];
-            else if (request.Author.Length > 100)
-                validationErrors["author"] = ["Author must be 100 characters or fewer."];
+                logger.LogInformation(
+                    "Created quote {QuoteId} by {Author}",
+                    created.Id,
+                    created.Author);
 
-            if (string.IsNullOrWhiteSpace(request.Text))
-                validationErrors["text"] = ["Text is required."];
-            else if (request.Text.Length > 1000)
-                validationErrors["text"] = ["Text must be 1000 characters or fewer."];
+                return Results.Created($"/api/quotes/{created.Id}", created);
+            }
+            catch (QuoteValidationException exception)
+            {
+                var errors = exception.Errors
+                    .GroupBy(error => error.Field)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.Select(error => error.Message).ToArray());
 
-            if (validationErrors.Count > 0)
-                return Results.ValidationProblem(validationErrors);
-
-            var created = await quoteService.CreateAsync(
-                request,
-                cancellationToken);
-
-            logger.LogInformation(
-                "Created quote {QuoteId} by {Author}",
-                created.Id,
-                created.Author);
-
-            return Results.Created($"/api/quotes/{created.Id}", created);
+                return Results.ValidationProblem(errors);
+            }
         });
 
         group.MapDelete("/{id:int}", async (
             int id,
-            IQuoteRepository repository,
+            IQuoteService quoteService,
             ILogger<Program> logger,
             CancellationToken cancellationToken) =>
         {
-            var deleted = await repository.DeleteAsync(
+            var deleted = await quoteService.DeleteAsync(
                 id,
                 cancellationToken);
 
