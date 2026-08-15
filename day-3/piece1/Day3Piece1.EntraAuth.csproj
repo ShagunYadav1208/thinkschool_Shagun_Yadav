@@ -7,4 +7,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Day3Piece1.Tests\**" />
+    <Content Remove="Day3Piece1.Tests\**" />
+    <EmbeddedResource Remove="Day3Piece1.Tests\**" />
+    <None Remove="Day3Piece1.Tests\**" />
+  </ItemGroup>
 </Project>

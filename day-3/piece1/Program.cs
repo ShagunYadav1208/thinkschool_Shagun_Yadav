@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Day3Piece1.EntraAuth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -39,10 +40,10 @@ builder.Services
     {
         options.ForwardDefaultSelector = context =>
         {
-            var token = GetBearerToken(context.Request.Headers.Authorization);
-            var issuer = ReadIssuer(token);
+            var token = EntraTokenRouting.GetBearerToken(context.Request.Headers.Authorization);
+            var issuer = EntraTokenRouting.ReadIssuer(token);
 
-            return IsEntraIssuer(issuer) ? EntraJwtScheme : InternalJwtScheme;
+            return EntraTokenRouting.IsEntraIssuer(issuer) ? EntraJwtScheme : InternalJwtScheme;
         };
     })
     .AddJwtBearer(InternalJwtScheme, options =>
@@ -74,7 +75,7 @@ builder.Services
                 $"https://sts.windows.net/{entraTenantId}/"
             ],
             ValidateAudience = true,
-            ValidAudiences = GetAllowedEntraAudiences(entraAudience),
+            ValidAudiences = EntraTokenRouting.GetAllowedEntraAudiences(entraAudience),
             ValidateLifetime = true,
             NameClaimType = "name",
             RoleClaimType = "roles"
@@ -180,44 +181,6 @@ static object DescribeUser(ClaimsPrincipal user) => new
     subject = user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value,
     claims = user.Claims.Select(claim => new { claim.Type, claim.Value }).ToArray()
 };
-
-static string? GetBearerToken(string? authorizationHeader)
-{
-    const string prefix = "Bearer ";
-    return authorizationHeader?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true
-        ? authorizationHeader[prefix.Length..].Trim()
-        : null;
-}
-
-static string? ReadIssuer(string? token)
-{
-    if (string.IsNullOrWhiteSpace(token))
-    {
-        return null;
-    }
-
-    try
-    {
-        return new JwtSecurityTokenHandler().ReadJwtToken(token).Issuer;
-    }
-    catch
-    {
-        return null;
-    }
-}
-
-static bool IsEntraIssuer(string? issuer) =>
-    issuer?.StartsWith("https://login.microsoftonline.com/", StringComparison.OrdinalIgnoreCase) == true
-    || issuer?.StartsWith("https://sts.windows.net/", StringComparison.OrdinalIgnoreCase) == true;
-
-static string[] GetAllowedEntraAudiences(string configuredAudience)
-{
-    var alternateAudience = configuredAudience.StartsWith("api://", StringComparison.OrdinalIgnoreCase)
-        ? configuredAudience["api://".Length..]
-        : $"api://{configuredAudience}";
-
-    return [configuredAudience, alternateAudience];
-}
 
 public sealed record TokenRequest(string ClientId, string ClientSecret);
 
