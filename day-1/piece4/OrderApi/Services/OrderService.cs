@@ -263,8 +263,8 @@ public class OrderService(
     {
         var discount = subtotal switch
         {
-            >= 1000m => subtotal * BulkDiscountRate,
-            >= 500m => subtotal * 0.05m,
+            > 1000m => subtotal * BulkDiscountRate,
+            > 500m => subtotal * 0.05m,
             _ => 0m
         };
 

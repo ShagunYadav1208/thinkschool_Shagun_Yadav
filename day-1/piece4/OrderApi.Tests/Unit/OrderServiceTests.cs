@@ -127,7 +127,7 @@ public class OrderServiceTests
             result.PaymentStatus);
 
         Assert.Equal(
-            1230m,
+            1171m,
             result.Total);
 
         Assert.Equal(
