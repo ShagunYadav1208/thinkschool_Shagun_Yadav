@@ -88,6 +88,136 @@ public class OrderServiceTests
             exception.Message);
     }
 
+    // Test: validation rejects orders with negative quantity
+    [Fact]
+    public async Task CreateOrderAsync_WithNegativeQuantity_ThrowsValidationException()
+    {
+        var repository = new FakeOrderRepository
+        {
+            Product = new Product
+            {
+                Id = 1,
+                Name = "Laptop",
+                Price = 1000m,
+                Stock = 20,
+                IsActive = true
+            }
+        };
+
+        var logger = new TestLogger<OrderService>();
+        var service = CreateService(repository, logger);
+
+        var request = new CreateOrderRequest
+        {
+            CustomerName = "Shagun Yadav",
+            CustomerEmail = "negative-quantity@example.com",
+            Items =
+            [
+                new CreateOrderItemRequest
+                {
+                    ProductId = 1,
+                    Quantity = -1
+                }
+            ]
+        };
+
+        var exception = await Assert.ThrowsAsync<OrderValidationException>(
+            () => service.CreateOrderAsync(
+                request,
+                CancellationToken.None));
+
+        Assert.Equal(
+            "Quantity must be greater than zero.",
+            exception.Message);
+    }
+
+    // Test: validation rejects orders with a quantity greater than 100
+    [Fact]
+    public async Task CreateOrderAsync_WithQuantityOverOneHundred_ThrowsValidationException()
+    {
+        var repository = new FakeOrderRepository
+        {
+            Product = new Product
+            {
+                Id = 1,
+                Name = "Laptop",
+                Price = 1000m,
+                Stock = 200,
+                IsActive = true
+            }
+        };
+
+        var logger = new TestLogger<OrderService>();
+        var service = CreateService(repository, logger);
+
+        var request = new CreateOrderRequest
+        {
+            CustomerName = "Shagun Yadav",
+            CustomerEmail = "over-limit@example.com",
+            Items =
+            [
+                new CreateOrderItemRequest
+                {
+                    ProductId = 1,
+                    Quantity = 101
+                }
+            ]
+        };
+
+        var exception = await Assert.ThrowsAsync<OrderValidationException>(
+            () => service.CreateOrderAsync(
+                request,
+                CancellationToken.None));
+
+        Assert.Equal(
+            "Quantity cannot be greater than 100.",
+            exception.Message);
+    }
+
+    // Test: validation rejects orders when the shipping address is too short
+    [Fact]
+    public async Task CreateOrderAsync_WithShippingAddressTooShort_ThrowsValidationException()
+    {
+        var repository = new FakeOrderRepository
+        {
+            Product = new Product
+            {
+                Id = 1,
+                Name = "Laptop",
+                Price = 1000m,
+                Stock = 20,
+                IsActive = true
+            }
+        };
+
+        var logger = new TestLogger<OrderService>();
+        var service = CreateService(repository, logger);
+
+        var request = new CreateOrderRequest
+        {
+            CustomerName = "Shagun Yadav",
+            CustomerEmail = "short-address@example.com",
+            ShippingAddress = "short",
+            Items =
+            [
+                new CreateOrderItemRequest
+                {
+                    ProductId = 1,
+                    Quantity = 1
+                }
+            ]
+        };
+
+        var exception = await Assert.ThrowsAsync<OrderValidationException>(
+            () => service.CreateOrderAsync(
+                request,
+                CancellationToken.None));
+
+        Assert.Equal(
+            "Shipping address is too short.",
+            exception.Message);
+    }
+
     [Fact]
     public async Task CreateOrderAsync_WithValidRequest_CalculatesTotalAndCreatesOrder()
     {
