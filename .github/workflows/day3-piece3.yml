@@ -3,10 +3,12 @@ name: Day 3 Piece 3 Auth Tests
 on:
   pull_request:
     paths:
-      - "thinkschool_Shagun_Yadav/day-3/piece3/**"
+      - "day-3/piece3/**"
+      - ".github/workflows/day3-piece3.yml"
   push:
     paths:
-      - "thinkschool_Shagun_Yadav/day-3/piece3/**"
+      - "day-3/piece3/**"
+      - ".github/workflows/day3-piece3.yml"
 
 jobs:
   test:
@@ -16,4 +18,4 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet test thinkschool_Shagun_Yadav/day-3/piece3
+      - run: dotnet test day-3/piece3

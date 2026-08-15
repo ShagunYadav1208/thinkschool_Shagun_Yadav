@@ -65,7 +65,7 @@ CI run URL: paste after pushing.
 
 PR note: this is solid.
 
-Because this exercise was scoped to `day-3/piece3`, the included CI workflow template is inside this folder at `.github/workflows/day3-piece3.yml`. For GitHub to run it, place that workflow under the repo root `.github/workflows/`.
+The CI workflow lives at the repository's actual root — `.github/workflows/day3-piece3.yml` relative to the `thinkschool_Shagun_Yadav` repo root, alongside the existing `ci.yml` (which is scoped to `day-4/piece1`). It triggers on push/PR changes under `day-3/piece3/**` and runs `dotnet test day-3/piece3`.
 
 ## GitHub link
 
