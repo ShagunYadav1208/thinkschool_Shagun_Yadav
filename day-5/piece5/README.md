@@ -1,63 +1,55 @@
 # Day 5 - Verify in App Insights with your first KQL
 
-## Status update: a real subscription showed up mid-session, then the resources were deleted
+## Status: real, complete, run against a live deployment
 
-Everything below the original "fully blocked, no subscription" framing turned out to be
-temporary. Later in this session an actual billable subscription became available on the Amity
-account (**"Azure for Students"**, tenant `amity.edu`) — different from the two accounts checked in
-[Piece 3](../piece3)/[Piece 4](../piece4) that genuinely had none at the time those were written.
-Against that subscription, [Day 5 Piece 4](../piece4)'s `azd up` was re-run and **actually
-succeeded**: a real resource group (`rg-thinkschool-quotes-api`, East Asia) came up with a Container
-Apps environment, the `quotes-api` container app on a live FQDN, an Application Insights component
-(`appi-kjoiqlfbl4bpk`), its backing Log Analytics workspace (`log-kjoiqlfbl4bpk`), a Container
-Registry, and a managed identity — all verified for real via `az resource list`, not assumed.
+Earlier drafts of this README stopped part-way — first blocked on "no subscription," then blocked
+on "the deployment that did exist got torn down before the query ran." Both blockers cleared this
+session: [Day 5 Piece 4](../piece4) was redeployed for real, and along the way this piece surfaced
+a genuine, previously-hidden bug in that deployment — **the app was emitting zero telemetry to
+Application Insights**, not because of ingestion lag, but because nothing in `QuotesApi` ever read
+the `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable azd's Bicep injects. That's now
+fixed (see "The bug this piece found," below), and the exercise's KQL returns real rows with real
+numbers from a real deployed app.
 
-With a live app finally deployed, this piece's script
-([`scripts/verify-and-save-function.sh`](scripts/verify-and-save-function.sh)) was run for real
-against it, not just written and left untested. It got as far as: installing the
-`application-insights` CLI extension, discovering the App Insights resource and workspace by
-resource type (exactly as the script does), resolving the app's live FQDN, and hitting the first
-endpoint — `GET /health` — which returned **`504`**. That's a real, honest data point, not a
-fabricated one: Container Apps' consumption plan scales to zero when idle, and the first request
-after a cold start can time out at the ingress gateway before the container finishes starting. It's
-recorded in "What would break this," below.
+## What actually happened, in order
 
-**Before the remaining endpoints could be hit, the KQL run, or the function saved, every resource
-in the subscription was deleted** (by request, mid-session). Re-checking just now:
-`rg-thinkschool-quotes-api` still exists as an empty shell with only a leftover Container Apps
-managed environment (`cae-kjoiqlfbl4bpk`) in it — no container app, no App Insights component, no
-Log Analytics workspace. So the piece is blocked again, but for a different, more mundane reason
-than before: not "no subscription exists," but "the deployment that did exist was torn down before
-this piece's verification finished." There is currently nothing running to query, and — same rule
-as before — that means no screenshot and no "which endpoint surprised me" observation get invented
-to paper over it.
+1. Redeployed [Day 5 Piece 4](../piece4) (`azd provision --no-state` + `azd deploy`) against the
+   same Azure for Students subscription used throughout Day 5.
+2. Ran [`scripts/verify-and-save-function.sh`](scripts/verify-and-save-function.sh) for real. It
+   hit `/health`, `/api/quotes` (GET/POST), and `/api/quotes/{id}`, all `200`/`201` — no cold-start
+   `504` this time, since the app was already warm from the deploy step's own health probe.
+3. Ran the exercise's exact KQL. **The `requests` table came back empty** (`"rows": []`) even after
+   the script's 3-minute ingestion wait. That's the real bug: `QuotesApi/Program.cs` had no
+   OpenTelemetry or Application Insights SDK at all — the Bicep sets the connection-string env var,
+   but nothing in the app ever consumed it, so no request telemetry was ever generated to ingest in
+   the first place. No amount of waiting would have fixed it.
+4. Fixed it in [Day 5 Piece 4](../piece4): added the `Azure.Monitor.OpenTelemetry.AspNetCore`
+   package and one line, `builder.Services.AddOpenTelemetry().UseAzureMonitor();`, which
+   auto-detects that same environment variable and wires up ASP.NET Core request tracing. Redeployed.
+5. Hit `/health`, `/api/quotes` (GET x2, POST x1), `/api/quotes/1` (hit), `/api/quotes/999` (404
+   miss), `/health` again — 7 requests across 4 distinct route shapes.
+6. Waited ~3 minutes for ingestion, then re-ran the exercise's KQL for real. Real rows came back.
 
-What's unchanged and still correct, regardless of resource state:
+## The bug this piece found (in Day 5 Piece 4, fixed there)
 
-- The exercise's KQL, checked against the real `requests` table schema (same schema [Day 4
-  Piece 5](../../day-4/piece5)'s `queries.kql` already used).
-- [`scripts/verify-and-save-function.sh`](scripts/verify-and-save-function.sh) — now not just
-  written-but-untested, but actually run partway against a real deployment this session. Every
-  command in it (`az monitor app-insights query`, `az monitor log-analytics workspace saved-search
-  create`, including the `--func-alias`/`--func-param` flags) was checked against the real,
-  installed CLI's own `--help` output.
-
-Once [Day 5 Piece 4](../piece4)'s `azd up` is run again against the same (still-active)
-subscription, this is genuinely one command away:
-
-```bash
-bash scripts/verify-and-save-function.sh                      # uses piece4's default names
-# or, if your resource group / app name differ:
-bash scripts/verify-and-save-function.sh <resource-group> <app-name>
+```
+using Microsoft.EntityFrameworkCore;
+using QuotesApi.Data;
+...
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddProblemDetails();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHealthChecks();
 ```
 
-No arguments are secrets — the resource group and app name are just names, not credentials. `az
-login` (already run once for Piece 3/4) is the only prerequisite; the script discovers the App
-Insights resource and its backing Log Analytics workspace by resource type rather than assuming a
-name, since azd's Bicep names them from a hash (`appi-<resourceToken>`) that isn't knowable ahead
-of a real deployment.
+No `AddOpenTelemetry()`, no `UseAzureMonitor()`, no Application Insights SDK reference anywhere in
+`QuotesApi.csproj`. The Bicep in `day-5/piece4/infra/resources.bicep` sets
+`APPLICATIONINSIGHTS_CONNECTION_STRING` as a container env var — that's necessary but not
+sufficient; an app has to actually read it and emit telemetry through the SDK. Setting the env var
+alone, as azd's generated infra does by default, gets you nothing in `requests`/`dependencies`
+without the app-side half. See [Day 5 Piece 4](../piece4)'s `Program.cs` and `.csproj` for the fix.
 
-## The exercise's KQL, verbatim
+## The exercise's KQL — real result
 
 ```kql
 requests
@@ -66,70 +58,92 @@ requests
 | order by p99 desc
 ```
 
-This is valid KQL against the standard `requests` table every App Insights resource has — no
-changes needed once a resource actually exists. `count()` with no arguments produces a column
-named `Count` automatically; `percentile(duration, N)` on the `duration` column (already in
-milliseconds in this table) is the standard idiom for "how slow is the slow tail," not just the
-average.
-
-## Saved as a function — [`queries.kql`](queries.kql)
-
-```kql
-let EndpointLatencySummary = (lookback:timespan=30m) {
-    requests
-    | where timestamp > ago(lookback)
-    | summarize
-        RequestCount = count(),
-        p50 = percentile(duration, 50),
-        p99 = percentile(duration, 99)
-        by name
-    | order by p99 desc
-};
-EndpointLatencySummary()
+```json
+{
+  "tables": [{
+    "columns": [
+      {"name": "name", "type": "string"},
+      {"name": "count_", "type": "long"},
+      {"name": "p50", "type": "real"},
+      {"name": "p99", "type": "real"}
+    ],
+    "rows": [
+      ["GET /api/quotes/",        2, 45.9373,  511.2629],
+      ["POST /api/quotes/",       1, 400.1014, 400.1014],
+      ["GET /health",             2, 0.5167,   126.2235],
+      ["GET /api/quotes/{id:int}",2, 2.5517,   58.593]
+    ]
+  }]
+}
 ```
 
-The Logs tab's "Save > Save as function" button does exactly this under the hood: it wraps
-whatever query is in the editor in a named `let` binding scoped to the workspace. Two equally real
-ways to actually create it, both ending at the same saved function:
+(Full response also saved at [`scripts/query-result.json`](scripts/query-result.json) — real
+output from `az monitor app-insights query`, not retyped.) No display/browser is available in this
+environment to take a literal portal screenshot — same situation as [Day 5 Piece
+3](../piece3)/[Piece 4](../piece4) — so this is the real JSON the portal's Logs tab would render as
+a table, pulled from the same underlying API.
 
-**By hand in the portal:** paste the `let EndpointLatencySummary = ...` block into Logs, run it
-once, click **Save → Save as function**, name it `EndpointLatencySummary`.
-
-**Scripted** (what [`scripts/verify-and-save-function.sh`](scripts/verify-and-save-function.sh)
-actually runs — real command, checked against the installed CLI):
-
-```bash
-az monitor log-analytics workspace saved-search create \
-  --resource-group "$RESOURCE_GROUP" \
-  --workspace-name "$WORKSPACE_NAME" \
-  --name "EndpointLatencySummary" \
-  --category "Performance" \
-  --display-name "Endpoint Latency Summary" \
-  --saved-query 'requests | where timestamp > ago(lookback) | summarize RequestCount = count(), p50 = percentile(duration, 50), p99 = percentile(duration, 99) by name | order by p99 desc' \
-  --func-alias "EndpointLatencySummary" \
-  --func-param "lookback:timespan = 30m"
-```
-
-Either way, from then on `EndpointLatencySummary()` (last 30 minutes) or `EndpointLatencySummary(1h)`
-(custom window) both work from any query in that workspace — including from alert rules or
-workbooks, which is the actual point of saving it rather than re-pasting the raw query each time.
+7 requests total across 4 route shapes (`2+1+2+2`), matching exactly what step 5 above sent.
 
 ## The observation
 
-The exercise asks for one observation about which endpoint surprised me from the KQL result. I
-still can't answer that with invented numbers — the deployment that did exist this session was
-torn down before the query ever ran, so there's no `name` column with real rows to look at.
-Guessing which endpoint "would probably" be slow and presenting that as an observation from real
-data is exactly the kind of thing I won't do.
+**`GET /health` surprised me** — not because it was slow (it wasn't: p50 = 0.52ms, by far the
+fastest endpoint here), but because of the *gap* between its p50 and p99. A p99 of 126ms on an
+endpoint that does nothing but return a static "Healthy" string, with a p50 250x faster, is a
+bigger best-case/worst-case spread than any of the endpoints that actually touch the database
+(`GET /api/quotes/{id:int}`, the actual EF Core round trip, only spread from 2.55ms to 58.6ms — a
+23x gap). With only 2 samples this isn't a statistically meaningful percentile, but the most
+plausible real explanation is that this session's first `/health` hit landed while the freshly
+deployed container was still warming up — JIT-compiling the health check middleware pipeline,
+initializing the newly-added OpenTelemetry/Azure Monitor pipeline, etc. — while the second hit,
+after the app had settled, was essentially free. It's a concrete, small-scale example of exactly
+the class of thing this exercise is trying to teach: a trivial-looking endpoint's *tail* latency
+can be dominated by process warm-up rather than the endpoint's own logic, and you can't see that
+from an average — only from `p50` vs `p99` side by side, which is precisely why the exercise's KQL
+asks for both instead of just `avg(duration)`.
 
-The one real, unscripted thing that did happen: the very first request this session sent to the
-live app — `GET /health` — came back `504`, not `200`. Not a KQL observation (no query ran against
-it), but a genuine surprise from hitting a real endpoint, which is closer to the spirit of the
-exercise than nothing at all. See "What would break this" for why.
+## Saved as a function — real query works, CLI persistence hit a genuine current platform limit
 
-Once [Day 5 Piece 4](../piece4)'s `azd up` is run again against the still-active subscription, this
-query is ready to run as-is against the redeployed `QuotesApi`, and the honest version of this
-section gets written from whatever it actually shows.
+The `let EndpointLatencySummary = (lookback:timespan=30m) { ... }` function in
+[`queries.kql`](queries.kql) is syntactically correct and — since the KQL it wraps is now proven to
+return real rows against this workspace — would work identically if pasted into the portal's Logs
+tab and run.
+
+Actually persisting it via `az monitor log-analytics workspace saved-search create` (what
+`scripts/verify-and-save-function.sh` scripts, as a CLI-reproducible alternative to the portal's
+"Save as function" button) failed, consistently, with a real API error:
+
+```
+ERROR: (InvalidParameter) Query Update/Create is restricted to user assigned storage, please link
+user assigned storage with affiliation to Query data source type.
+```
+
+This is not a bug in the script or this piece's setup — it's a real, current Azure Monitor Logs
+platform requirement: Log Analytics workspaces need a linked, managed-identity-authenticated
+storage account before saved queries/functions can be created or updated via the API, ahead of an
+August 31, 2026 enforcement deadline (see sources below). Fixing it for real would mean
+provisioning a storage account, assigning the workspace a managed identity, granting that identity
+the Storage Table Data Contributor role on the account, and linking them — a nontrivial amount of
+additional infrastructure whose only purpose would be to unblock a CLI convenience wrapper around
+an action the exercise itself only asks to be done through the portal's own "Save as function"
+button (which doesn't have this API-specific restriction, or at least isn't documented as being
+subject to it the same way). Given that, and given there's no browser in this environment to drive
+the portal directly, I've left this as an honestly-documented real limitation rather than either
+faking success or scope-creeping a storage account into this exercise to route around it.
+
+Sources:
+- [Use customer-managed storage accounts in Azure Monitor Logs](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/private-storage)
+- [Saved Searches - Create Or Update - REST API](https://learn.microsoft.com/en-us/rest/api/loganalytics/saved-searches/create-or-update?view=rest-loganalytics-2025-07-01)
+
+## What's real vs. what's still provisioned
+
+Everything above is genuine session output: the redeployment, the bug found and fixed, the real
+`requests` rows, the real saved-search API error. As of writing, `rg-thinkschool-quotes-api`
+(East Asia) is still live under the same Azure for Students subscription used throughout Day 5 —
+Container Registry, Log Analytics, Application Insights, the Container Apps environment, and the
+running `quotes-api` container app, now with working telemetry. Worth deciding explicitly whether
+to keep it running (mentor can independently re-run the KQL) or tear it down, since Azure for
+Students credit is finite.
 
 ## GitHub link
 
@@ -140,57 +154,31 @@ push yourself.)
 
 ## Notes for mentor
 
-The upstream blocker (no billable subscription) did eventually clear this session — the Amity
-account's "Azure for Students" subscription came through, [Piece 4](../piece4)'s `azd up` succeeded
-against it for real, and this piece's script got as far as one real endpoint hit before every
-resource was deleted mid-verification. So the remaining gap here isn't "can this actually run" —
-it's demonstrated that it can — it's "the deployment it needs didn't stay up long enough to finish
-the query and the save-as-function step." Everything past that point (the KQL itself, the saved
-function, the script) is real, correct, and ready to run unmodified the next time the app is
-redeployed — nothing here needs to be rewritten, only re-executed against a live app.
+This piece ended up fixing a real bug in [Day 5 Piece 4](../piece4) (missing OpenTelemetry/App
+Insights instrumentation) that would have silently made every "check the telemetry" exercise from
+here on produce empty results, no matter how long anyone waited for ingestion. It also surfaced a
+genuine, current Azure Monitor Logs platform requirement (linked storage account for saved-search
+API calls) that isn't mentioned in the exercise and that I chose not to route around by adding
+infrastructure whose only purpose would be satisfying a CLI convenience script — happy to do that
+if you'd rather see it fully automated end-to-end.
 
 ## What did I learn this session?
 
-"Save as function" isn't a special portal-only feature — it's KQL's own `let`-with-parameters
-syntax, wrapped by a UI action that stores it against the workspace. Knowing that means a saved
-function is something you can write, review, and version-control like any other query, rather than
-a black box the portal manages for you.
+An environment variable being set on a container is necessary but not sufficient for telemetry to
+exist — the app has to actually read it and call the right SDK. This is easy to get wrong silently,
+because nothing about the deployment *fails*: the app starts, serves requests, returns 200s, and
+the only symptom is an empty table in a dashboard you might not check until much later. The fix
+here (`AddOpenTelemetry().UseAzureMonitor()`) is one line, but finding that it was needed required
+actually running the query against real data and getting zero rows back, not reading the Bicep and
+assuming the env var meant the wiring was complete.
 
 ## What would break this?
 
-Percentiles need enough data points to mean anything — `percentile(duration, 99)` over a handful
-of requests in a 30-minute window is really just "the slowest request," not a meaningful tail
-latency figure; the exercise's `ago(30m)` window is fine for a demo hit a few times manually, but
-misleading if read as production signal without enough real traffic behind it. Also, App Insights
-ingestion has a delay (typically under 5 minutes but not instant) — hitting an endpoint and
-immediately running this query against `ago(30m)` can legitimately show fewer requests than were
-actually sent, which looks like a bug in the query when it's actually just ingestion lag.
-
-One more, found while verifying this piece: `az monitor app-insights query` lives in the
-`application-insights` CLI extension, which isn't installed by default. Run it in a script without
-installing the extension first, and `az` tries to prompt "install it now? (Y/n)" — which throws an
-unhandled `EOF when reading a line` traceback in any non-interactive shell (a script, CI, or this
-session) instead of a clean error. `scripts/verify-and-save-function.sh` handles this itself —
-`az extension add --name application-insights --upgrade --yes` runs first, idempotently — rather
-than leaving it as a step someone has to remember to run first.
-
-One more, found on a later correctness pass through this script (no live resource needed to catch
-it): `az monitor app-insights query` takes `--apps`/`-a` (plural), not `--app`. The script had
-`--app`, which happened to still work — `argparse` resolves it as an unambiguous prefix of `--apps`
-since no other flag on that command starts with `--app` — but it's not the flag the command's own
-`--help` actually documents, which undercuts the claim earlier in this README that every command
-was checked against `--help` output. Fixed to `--apps` so the script matches the documented syntax
-instead of relying on abbreviation matching that could break in a future CLI version. (Verified by
-running the real query command against a nonexistent resource group: `--app` reached Azure and
-failed with `ResourceGroupNotFound`, not an argument-parsing error — proof it was being accepted as
-an abbreviation, not silently ignored.)
-
-One more, found by actually hitting the real deployed app: **the very first request came back
-`504`, not `200`.** Container Apps' consumption plan scales an idle app to zero replicas; the first
-inbound request has to wait for a cold container start, and if that takes longer than the ingress
-gateway's timeout, the caller sees a `504` even though the app is perfectly healthy a few seconds
-later. A verification script that hits `/health` once, sees a non-200, and concludes the deployment
-is broken would be wrong. `scripts/verify-and-save-function.sh` now retries `/health` up to 5 times
-(10s apart) before treating the app as warmed up and moving on to the real hits that need to land
-in `requests`; the alternative would be setting `minReplicas: 1` on the container app if cold
-starts aren't acceptable for a given workload at all.
+Same caveats as before: percentiles over 1-2 samples aren't statistically meaningful (this
+piece's own observation says so explicitly rather than overstating what `p99` over 2 points
+means), and App Insights ingestion lag means querying immediately after a burst of traffic can
+show fewer rows than were actually sent. Newly discovered this session: Azure Monitor Logs is
+actively tightening saved-search/query API requirements around managed-identity-linked storage
+(effective August 31, 2026) — a script that worked when first written can start failing later for
+reasons unrelated to anything in the script itself, simply because the platform's requirements
+changed underneath it.

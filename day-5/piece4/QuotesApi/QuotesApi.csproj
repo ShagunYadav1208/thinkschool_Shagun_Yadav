@@ -29,6 +29,9 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <!-- Reads APPLICATIONINSIGHTS_CONNECTION_STRING (set by azd's Bicep) and wires ASP.NET Core
+         request tracing into Application Insights - see Program.cs for why this was missing. -->
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
   </ItemGroup>
 
 </Project>

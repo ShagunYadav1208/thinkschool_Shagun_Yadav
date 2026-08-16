@@ -1,0 +1,51 @@
+{
+  "tables": [
+    {
+      "columns": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "count_",
+          "type": "long"
+        },
+        {
+          "name": "p50",
+          "type": "real"
+        },
+        {
+          "name": "p99",
+          "type": "real"
+        }
+      ],
+      "name": "PrimaryResult",
+      "rows": [
+        [
+          "GET /api/quotes/",
+          2,
+          45.9373,
+          511.2629
+        ],
+        [
+          "POST /api/quotes/",
+          1,
+          400.1014,
+          400.1014
+        ],
+        [
+          "GET /health",
+          2,
+          0.5167,
+          126.2235
+        ],
+        [
+          "GET /api/quotes/{id:int}",
+          2,
+          2.5517,
+          58.593
+        ]
+      ]
+    }
+  ]
+}
