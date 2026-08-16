@@ -22,15 +22,13 @@ public static class QuoteEndpointExtensions
 
             if (currentPage < 1 || pageSize < 1 || pageSize > 100)
             {
-                var errors = new Dictionary<string, string[]>
-                {
-                    ["page"] = currentPage < 1
-                        ? ["Page must be greater than 0."]
-                        : [],
-                    ["size"] = pageSize is < 1 or > 100
-                        ? ["Size must be between 1 and 100."]
-                        : []
-                };
+                var errors = new Dictionary<string, string[]>();
+
+                if (currentPage < 1)
+                    errors["page"] = ["Page must be greater than 0."];
+
+                if (pageSize is < 1 or > 100)
+                    errors["size"] = ["Size must be between 1 and 100."];
 
                 return Results.ValidationProblem(errors);
             }
@@ -67,14 +65,12 @@ public static class QuoteEndpointExtensions
 
             if (string.IsNullOrWhiteSpace(request.Author))
                 validationErrors["author"] = ["Author is required."];
+            else if (request.Author.Length > 100)
+                validationErrors["author"] = ["Author must be 100 characters or fewer."];
 
             if (string.IsNullOrWhiteSpace(request.Text))
                 validationErrors["text"] = ["Text is required."];
-
-            if (request.Author.Length > 100)
-                validationErrors["author"] = ["Author must be 100 characters or fewer."];
-
-            if (request.Text.Length > 1000)
+            else if (request.Text.Length > 1000)
                 validationErrors["text"] = ["Text must be 1000 characters or fewer."];
 
             if (validationErrors.Count > 0)
