@@ -12,9 +12,14 @@ requests
 
 // ---------------------------------------------------------------------------
 // Find every log line for one user's request, most recent first — the
-// exercise's own example, adapted. Works because logger.LogInformation(
-// "... {UserId} ...", userId) in Program.cs becomes a customDimensions.UserId
-// field once UseAzureMonitor() exports it — no extra wiring needed.
+// exercise's own example, adapted. logger.LogInformation("... {UserId} ...",
+// userId) in Program.cs becomes a customDimensions.UserId field because
+// Program.cs's Serilog config has an explicit WriteTo.ApplicationInsights(...)
+// sink — verified live that AddAzureMonitor() alone does NOT capture these:
+// Host.UseSerilog() replaces the whole ILogger pipeline, so the automatic
+// ILogger-to-traces bridge never sees these calls (traces stayed at 0 rows
+// with only AddAzureMonitor() wired), even while requests/dependencies
+// telemetry landed normally.
 // ---------------------------------------------------------------------------
 traces
 | where timestamp > ago(15m)
@@ -23,10 +28,13 @@ traces
 
 // ---------------------------------------------------------------------------
 // The exact query behind the alert in infra/main.bicep: average response
-// time of POST /api/quotes, bucketed into 5-minute windows.
+// time of POST /api/quotes, bucketed into 5-minute windows. Note the trailing
+// slash on the route name — verified against real telemetry: ASP.NET Core
+// records this endpoint as "POST /api/quotes/", and the version without the
+// slash matches zero rows, ever.
 // ---------------------------------------------------------------------------
 requests
-| where name == "POST /api/quotes"
+| where name == "POST /api/quotes/"
 | summarize AvgDurationMs = avg(duration) by bin(timestamp, 5m)
 | order by timestamp desc
 

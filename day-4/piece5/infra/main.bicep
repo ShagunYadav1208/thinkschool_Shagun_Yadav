@@ -92,9 +92,13 @@ resource responseTimeAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-pr
     criteria: {
       allOf: [
         {
+          // The trailing slash matters: ASP.NET Core records this endpoint's operation name as
+          // "POST /api/quotes/" (from MapGroup("/api/quotes") + MapPost("/")), not "POST /api/quotes".
+          // Verified live against a real deployment — the version without the slash matched zero
+          // rows, ever, which means the alert would never fire no matter how slow the endpoint got.
           query: '''
 requests
-| where name == "POST /api/quotes"
+| where name == "POST /api/quotes/"
 | summarize AvgDurationMs = avg(duration) by bin(timestamp, 5m)
 '''
           timeAggregation: 'Average'

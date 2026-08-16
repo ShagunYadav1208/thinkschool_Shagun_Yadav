@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Text;
 using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -14,6 +15,7 @@ using QuotesIntegrationApi.Data;
 using QuotesIntegrationApi.Models;
 using Serilog;
 using Serilog.Context;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 const string ServiceName = "QuotesIntegrationApi";
 
@@ -29,12 +31,33 @@ if (!string.IsNullOrWhiteSpace(keyVaultUri))
     builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUri), new DefaultAzureCredential());
 }
 
+// Read once, before Serilog and OpenTelemetry are both wired from it below. Comes from Key Vault
+// (via AddAzureKeyVault) once deployed — never hardcoded, never in a config file checked into
+// source control. Locally, with nothing configured, both blocks below stay off.
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+
 // Log levels per category (Microsoft.AspNetCore at Warning, EF Core SQL at Debug only in
 // Development) live in appsettings.json / appsettings.Development.json under "Serilog", not here.
-builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfiguration
-    .ReadFrom.Configuration(context.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext());
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext();
+
+    // Host.UseSerilog() replaces the entire ILogger pipeline, so AddAzureMonitor()'s automatic
+    // ILogger-to-traces bridge (below) never sees a single one of these log calls — verified live:
+    // requests/dependencies telemetry landed in Application Insights, but the traces table stayed
+    // at zero rows no matter how long we waited. Sending Serilog events to Application Insights
+    // explicitly, as their own sink, is what actually gets structured LogInformation calls into
+    // the traces table with their properties as customDimensions.
+    if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+    {
+        var telemetryConfiguration = TelemetryConfiguration.CreateDefault();
+        telemetryConfiguration.ConnectionString = appInsightsConnectionString;
+        loggerConfiguration.WriteTo.ApplicationInsights(telemetryConfiguration, TelemetryConverter.Traces);
+    }
+});
 
 // One ActivitySource for spans we start ourselves (e.g. "validate-create-quote-request" below) —
 // registered with .AddSource so the OTel SDK actually samples/exports activities it creates.
@@ -53,12 +76,9 @@ var tracing = builder.Services.AddOpenTelemetry()
                 builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317");
         }));
 
-// The connection string above comes from Key Vault (via AddAzureKeyVault) once deployed — never
-// hardcoded, never in a config file checked into source control. Locally, with nothing configured,
-// this stays off and the local OTLP-to-Jaeger export above is the only exporter, unchanged from
-// Piece 4. In Azure, UseAzureMonitor exports the same traces (plus logs and metrics) to
-// Application Insights, on top of — not instead of — local export.
-var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+// UseAzureMonitor exports traces and metrics to Application Insights, on top of — not instead
+// of — the local OTLP-to-Jaeger export above, unchanged from Piece 4. Logs are handled separately,
+// by the Serilog sink configured above, for the reason explained there.
 if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
     tracing.UseAzureMonitor(options => options.ConnectionString = appInsightsConnectionString);

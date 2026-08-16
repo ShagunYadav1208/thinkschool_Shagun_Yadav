@@ -16,7 +16,9 @@
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
-    <!-- Wired up later, once a real Application Insights connection string exists (see README). -->
+    <!-- Explicit sink for structured logs: Host.UseSerilog() replaces the ILogger pipeline, so
+         AddAzureMonitor()'s automatic ILogger-to-traces bridge never sees these calls (see
+         Program.cs). This sink is what actually gets them into Application Insights' traces table. -->
     <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="5.0.1" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
