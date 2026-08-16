@@ -3,10 +3,12 @@ name: Day 3 Piece 6 SQL Server Integration Tests
 on:
   pull_request:
     paths:
-      - "thinkschool_Shagun_Yadav/day-3/piece6/**"
+      - "day-3/piece6/**"
+      - ".github/workflows/day3-piece6.yml"
   push:
     paths:
-      - "thinkschool_Shagun_Yadav/day-3/piece6/**"
+      - "day-3/piece6/**"
+      - ".github/workflows/day3-piece6.yml"
 
 jobs:
   test:
@@ -30,7 +32,7 @@ jobs:
           if [ -f /tmp/docker-cache/mssql-2022.tar ]; then
             docker load -i /tmp/docker-cache/mssql-2022.tar
           fi
-      - run: dotnet test thinkschool_Shagun_Yadav/day-3/piece6
+      - run: dotnet test day-3/piece6
       - name: Save SQL Server image to cache
         if: always()
         run: |

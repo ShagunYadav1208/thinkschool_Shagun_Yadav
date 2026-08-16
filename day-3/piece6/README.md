@@ -133,7 +133,7 @@ jobs:
           if [ -f /tmp/docker-cache/mssql-2022.tar ]; then
             docker load -i /tmp/docker-cache/mssql-2022.tar
           fi
-      - run: dotnet test thinkschool_Shagun_Yadav/day-3/piece6
+      - run: dotnet test day-3/piece6
       - name: Save SQL Server image to cache
         if: always()
         run: |
@@ -141,7 +141,7 @@ jobs:
           docker save mcr.microsoft.com/mssql/server:2022-latest -o /tmp/docker-cache/mssql-2022.tar
 ```
 
-Full workflow: [.github/workflows/day3-piece6.yml](.github/workflows/day3-piece6.yml)
+The workflow lives at the repository's actual root — `.github/workflows/day3-piece6.yml` relative to the `thinkschool_Shagun_Yadav` repo root (GitHub Actions only scans workflows from there), alongside `ci.yml` (`day-4/piece1`) and `day3-piece3.yml`. Paths inside it are repo-relative (`day-3/piece6/**`, not `thinkschool_Shagun_Yadav/day-3/piece6/**`), since that folder name is itself the repo root, not a path inside it.
 
 ## Test run output
 
