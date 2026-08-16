@@ -156,15 +156,13 @@ quotes.MapGet("/", async (
 
     if (currentPage < 1 || pageSize < 1 || pageSize > 100)
     {
-        var errors = new Dictionary<string, string[]>
-        {
-            ["page"] = currentPage < 1
-                ? ["Page must be greater than 0."]
-                : [],
-            ["size"] = pageSize is < 1 or > 100
-                ? ["Size must be between 1 and 100."]
-                : []
-        };
+        var errors = new Dictionary<string, string[]>();
+
+        if (currentPage < 1)
+            errors["page"] = ["Page must be greater than 0."];
+
+        if (pageSize is < 1 or > 100)
+            errors["size"] = ["Size must be between 1 and 100."];
 
         return Results.ValidationProblem(errors);
     }
