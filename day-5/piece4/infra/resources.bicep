@@ -103,6 +103,17 @@ module quotesApi 'br/public:avm/res/app/container-app:0.8.0' = {
             name: 'PORT'
             value: '8080'
           }
+          {
+            // .NET's container images run as a non-root user; /app (holding the default
+            // "Data Source=quotes.db" relative path) isn't writable by that user, so SQLite
+            // fails to open the database file on startup. Confirmed live: the deployed revision
+            // crash-looped with "SQLite Error 14: unable to open database file" until this was
+            // set. Same root cause and fix as day-5/piece2's README ("what would break this") -
+            // /tmp is world-writable in the base image but not persisted across revisions/restarts,
+            // which is an accepted limitation for this exercise, not a production data path.
+            name: 'ConnectionStrings__DefaultConnection'
+            value: 'Data Source=/tmp/quotes.db'
+          }
         ]
       }
     ]

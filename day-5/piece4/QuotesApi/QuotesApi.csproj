@@ -7,22 +7,22 @@
     <UserSecretsId>14042f2d-7ba1-46b8-8cb9-8bc29e68213b</UserSecretsId>
   </PropertyGroup>
 
-  <!-- .NET SDK container support (docs.microsoft.com/dotnet/core/docker/publish-as-container).
-       No Dockerfile: "dotnet publish" targeting linux x64 with target PublishContainer reads
-       these properties and builds and tags the image straight into the local Docker daemon.
-       Alpine base for a smaller image than the default Debian-based aspnet image. -->
-  <PropertyGroup>
-    <ContainerImageName>quotes-api</ContainerImageName>
-    <ContainerImageTag>0.1.0</ContainerImageTag>
-    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
-    <!-- Alpine's base image is musl libc, not glibc. Without this, a plain linux/x64 publish
-         restores the glibc-linked linux-x64 SQLitePCLRaw native library, which throws
-         DllNotFoundException at startup on Alpine (see README, "what would break this"). This
-         property makes the container tooling restore/publish the linux-musl-x64 RID instead,
-         matching the base image's libc. -->
-    <ContainerFamily>alpine</ContainerFamily>
-  </PropertyGroup>
-
+  <!-- This project's container image properties (ContainerImageName/Tag, an Alpine base image)
+       were copied in from day-5/piece2 along with the rest of QuotesApi, for that piece's own
+       manual "dotnet publish /t:PublishContainer" + "docker run" workflow. Both broke real,
+       live azd deployment in this piece, confirmed by actually running azd deploy against a real
+       Azure Container Apps environment:
+       1. The Alpine base image expects musl libc, but azd's own container build resolved a
+          glibc-linked SQLitePCLRaw native library into it regardless (no exposed way to pin the
+          RID azd's build uses) - the deployed revision crash-looped with "Error loading shared
+          library libe_sqlite3: No such file or directory".
+       2. ContainerImageName=quotes-api forces the pushed repository name to "quotes-api", but
+          azd deploy separately updates the Container App resource to reference azd's own computed
+          repository path ("piece4/quotes-api-<env-name>") - a path nothing was ever pushed to,
+          so the container entered ImagePullBackOff.
+       azd fully owns image naming and the container's target platform for this piece's actual
+       exercise (deploy via azd CLI, no Dockerfile) - neither property is needed here, so both are
+       removed rather than reconciled against azd's own conventions. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

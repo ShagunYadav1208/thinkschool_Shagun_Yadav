@@ -1,101 +1,36 @@
 # Day 5 - Deploy via azd CLI
 
-This piece reuses [Day 5 Piece 2](../piece2)'s `QuotesApi` (copied in, not modified) as the app azd
-targets. Everything below — installing azd, running `azd init`, generating the Bicep, and
-attempting `azd up` — was actually run in this session against a real (if empty) Azure account.
-Nothing is simulated except the parts explicitly labeled as such.
+This piece reuses [Day 5 Piece 2](../piece2)'s `QuotesApi` (copied in) as the app azd deploys.
 
-## What's real here, and what isn't
+## Status: real, live, and fully working
 
-I don't have a billable Azure subscription in this environment. Unlike [Day 5 Piece
-3](../piece3) though, this piece got further before hitting that wall, and turned up something
-worth being transparent about:
+An earlier draft of this README stopped at "no Azure subscription available, nothing was
+provisioned." That's no longer true — a working **Azure for Students** subscription became
+available (the same one used for real in [Day 5 Piece 3](../piece3)), so this was re-run for real
+against it: `azd up`, three real bugs found by actually deploying (not by inspection), all three
+fixed, and a genuinely live, working Container App at the end. Nothing below is illustrative.
 
-- Installed azd for real (`winget install microsoft.azd`, real output below).
-- Ran `azd init` for real against `QuotesApi` — it correctly auto-detected the .NET service and
-  generated a correct `azure.yaml` with no manual edits needed (see "no edit needed" below).
-- Ran `azd infra gen` for real, producing the actual Bicep this exercise describes.
-- Ran `azd up` for real. It triggered its own Azure login, and — separately from the `az login`
-  attempt in Day 5 Piece 3 (which used an Amity University account with no subscription) — it
-  silently authenticated as a **different**, personal account
-  (`shagunyadav1208@gmail.com`) via a cached credential on this machine, without prompting for
-  credentials again.
-- Before letting `azd up` provision anything under that account, I stopped and checked (with
-  explicit sign-off) whether it actually has a subscription, rather than assuming either way.
-  It doesn't: `az login` under that same account reports a tenant called **"Thinkbridge"** but
-  "No subscriptions found" in it — so there was nothing to provision against, and nothing was
-  created.
-
-Given that, there is no live URL and no real curl to a deployed `/health` — I'm not fabricating
-either. Everything up through "the real Bicep azd generated" is genuine output from this session;
-everything past "no subscription" is explicitly marked as such.
-
-## Installing azd — real output
+## Installing azd and `azd init` — unchanged from the first draft
 
 ```
 > winget install microsoft.azd --accept-package-agreements --accept-source-agreements
-
-Found Azure Developer CLI [Microsoft.Azd] Version 1.31.200
-Downloading https://github.com/Azure/azure-dev/releases/download/azure-dev-cli_1.31.1/azd-windows-amd64.msi
-Successfully verified installer hash
-Starting package install...
 Successfully installed
-
 > azd version
 azd version 1.31.1 (commit 38c0e3235ee7a27a942a95431b0d0a8a530ae6b0) (stable)
-```
 
-(The exercise says `brew install azd` — that's the macOS instruction; `winget install
-microsoft.azd` is the equivalent for this Windows environment.)
-
-## `azd init` — real output
-
-```
 > azd init --from-code -e thinkschool-quotes-api
-
-Initializing an app to run on Azure (azd init)
-
-Scanning app code in current directory
-  (✓) Done: Scanning app code in current directory
-
 Detected services:
-
   .NET
   Detected in: QuotesApi
-
-azd will generate the files necessary to host your app on Azure using Azure Container Apps.
-
-Select an option Generating ./azure.yaml
-
-Generating files to run your app on Azure:
-
   (✓) Done: Generating ./azure.yaml
   (✓) Done: Generating ./next-steps.md
-
 SUCCESS: Your app is ready for the cloud!
-Run azd up to provision and deploy your app to Azure.
 ```
 
-One honest wrinkle: this shell has no real interactive terminal, and azd's "Select an option"
-step (the exercise's "Pick 'Confirm and continue'") is a TUI picker that refuses plain piped
-input by default — it errors with "This prompt cannot be answered non-interactively" unless
-`AZD_NON_INTERACTIVE=false` is set explicitly (azd auto-detects sandboxed/agent shells and
-disables prompts by default) *and* the exact option text is piped in with no encoding quirks (a
-PowerShell string pipe silently prepended a UTF-8 BOM to the answer on my first attempt, which
-failed an exact-match comparison — switching to `printf` in bash fixed it). None of this changes
-what got generated; it's just what it actually took to drive the picker from here.
-
-## `azure.yaml` — no edit needed
-
-The exercise says "Edit azure.yaml to point the service to your project." In this case there was
-nothing to edit — `azd init`'s app-detection already produced the correct thing on its own:
+`azure.yaml` needed no manual edit — `azd init`'s detection already produced the right thing:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
-
 name: piece4
-metadata:
-    template: azd-init@1.31.1
 services:
     quotes-api:
         project: QuotesApi
@@ -107,132 +42,112 @@ resources:
         port: 8080
 ```
 
-`port: 8080` matches the container port from [Day 5 Piece 2](../piece2) exactly (.NET's container
-images listen on 8080 by default), so this would have worked unmodified.
+Two corrections to the exercise text, both still accurate:
+- `azd init` (1.31.1) only writes `azure.yaml` to disk; the Bicep is generated in memory until you
+  run `azd infra gen` explicitly (see `infra/` for what that produced — Azure Verified Modules for
+  monitoring, Container Registry, the managed environment, a user-assigned identity, and the
+  container app itself).
+- `brew install azd` is the macOS instruction; `winget install microsoft.azd` is the Windows
+  equivalent used here.
 
-## One correction to the exercise text: `infra/` isn't generated by `azd init` anymore
-
-The exercise says `azd init` "creates azure.yaml + infra/main.bicep + infra/main.parameters.json."
-That was true in older azd versions; in 1.31.1, `azd init` only writes `azure.yaml` — the Bicep is
-generated **in memory** and used directly by `azd provision`/`azd up`, unless you explicitly ask
-for it on disk. `next-steps.md` (also generated, real) says so directly:
-
-> When needed, `azd` generates the required infrastructure as code in memory and uses it. If you
-> would like to see or modify the infrastructure that `azd` uses, run `azd infra gen` to persist it
-> to disk.
-
-So I ran that:
+## `azd up` — real output, real bugs, real fixes
 
 ```
-> azd infra gen
-
-Generating infrastructure
-  (✓) Done: Generating infrastructure
+> azd provision --no-state --no-prompt
+  (✓) Done: Resource group: rg-thinkschool-quotes-api (2.596s)
+  (✓) Done: Log Analytics workspace: log-kjoiqlfbl4bpk (25.95s)
+  (✓) Done: Container Registry: crkjoiqlfbl4bpk (24.059s)
+  (✓) Done: Application Insights: appi-kjoiqlfbl4bpk (8.225s)
+  (✓) Done: Portal dashboard: dash-kjoiqlfbl4bpk (2.205s)
+  (✓) Done: Container Apps Environment: cae-kjoiqlfbl4bpk (2m34.247s)
+  (✓) Done: Container App: quotes-api (35.626s)
+SUCCESS: Your application was provisioned in Azure in 5 minutes 35 seconds.
 ```
 
-which produced the real files the exercise expects, plus a couple more the current Bicep starter
-template includes that the exercise doesn't mention:
+The first `azd deploy` after that failed, and each failure was a real, separate bug — found by
+actually deploying against live Azure, not by code review:
+
+**Bug 1 — `ImagePullBackOff`.** `QuotesApi.csproj` (copied from piece2) hardcoded
+`<ContainerImageName>quotes-api</ContainerImageName>`. `azd deploy` pushed the image under that
+fixed repository name, but separately updated the Container App to reference azd's own computed
+path (`piece4/quotes-api-<env-name>`) — a path nothing was ever pushed to. Confirmed directly:
+`az containerapp show` and `az acr repository list` showed two different repository names.
+
+**Bug 2 — `CrashLoopBackOff` after fixing bug 1.** Same csproj also hardcoded an Alpine
+(`mcr.microsoft.com/dotnet/aspnet:10.0-alpine`, musl libc) base image with `ContainerFamily=alpine`
+— piece2's own choice, for piece2's own manual `dotnet publish --os linux-musl --arch x64`
+workflow. `azd deploy`'s build path resolves its own RID with no exposed way to pin it to
+`linux-musl-x64`, so it restored the glibc-linked `linux-x64` SQLitePCLRaw native library into the
+musl base image anyway. Confirmed live in the container logs:
+```
+Error loading shared library libe_sqlite3: No such file or directory
+```
+Fix: dropped `ContainerImageName`, `ContainerImageTag`, `ContainerBaseImage`, and
+`ContainerFamily` from `QuotesApi.csproj` entirely. This exercise never asked for Alpine — that
+was piece2's requirement, copied over along with the rest of the project without being needed
+here. With no base image pinned, the SDK's default base image tracks whatever RID actually gets
+published, so libc always matches.
+
+**Bug 3 — `SqliteException: unable to open database file`, after fixing bugs 1 and 2.** Exactly
+the second bug piece2's own README documents: .NET's container images run as a non-root user since
+.NET 8, `/app` isn't writable by it, and the default connection string
+(`Data Source=quotes.db`, relative to `/app`) can never work. Confirmed live in the container logs:
+```
+SQLite Error 14: 'unable to open database file'
+```
+Fix: added a `ConnectionStrings__DefaultConnection` environment variable
+(`Data Source=/tmp/quotes.db`) to the container app definition in `infra/resources.bicep` — the
+infra-level equivalent of piece2's `docker run -e ConnectionStrings__DefaultConnection=...`
+override, for the same reason: `/tmp` is world-writable, `/app` isn't, and baking a path into the
+image is worse than configuring it at the infra layer. Same caveat as piece2: this is ephemeral,
+wiped on every new revision — fine for this exercise, not for real data.
+
+After all three fixes, `azd provision` (to apply the Bicep env var change) then `azd deploy`
+produced a genuinely healthy, running replica:
 
 ```
-infra/main.bicep
-infra/main.parameters.json
-infra/resources.bicep
-infra/modules/fetch-container-image.bicep
-infra/abbreviations.json
+> az containerapp replica list --name quotes-api --resource-group rg-thinkschool-quotes-api
+quotes-api--0000002-6b59dff7b7-v6kgp   Running   True   restartCount: 0
 ```
 
-`main.bicep` (subscription-scoped, creates the resource group, then delegates everything else):
-
-```bicep
-targetScope = 'subscription'
-
-param environmentName string
-param location string
-param quotesApiExists bool
-param principalId string
-param principalType string
-
-var tags = {
-  'azd-env-name': environmentName
-}
-
-resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-${environmentName}'
-  location: location
-  tags: tags
-}
-
-module resources 'resources.bicep' = {
-  scope: rg
-  name: 'resources'
-  params: {
-    location: location
-    tags: tags
-    principalId: principalId
-    principalType: principalType
-    quotesApiExists: quotesApiExists
-  }
-}
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT
-output AZURE_RESOURCE_QUOTES_API_ID string = resources.outputs.AZURE_RESOURCE_QUOTES_API_ID
-```
-
-`resources.bicep` builds everything from **Azure Verified Modules** (`br/public:avm/...`) rather
-than hand-rolled resource blocks — this is the actual "2026 stack" the exercise's subtitle refers
-to:
+## The live URL and real curls
 
 ```
-module monitoring 'br/public:avm/ptn/azd/monitoring:0.1.0' = { ... }
-module containerRegistry 'br/public:avm/res/container-registry/registry:0.1.1' = { ... }
-module containerAppsEnvironment 'br/public:avm/res/app/managed-environment:0.4.5' = { ... }
-module quotesApiIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.2.1' = { ... }
-module quotesApiFetchLatestImage './modules/fetch-container-image.bicep' = { ... }
-module quotesApi 'br/public:avm/res/app/container-app:0.8.0' = { ... }
+https://quotes-api.wonderfulpebble-94a9da27.eastasia.azurecontainerapps.io/
 ```
 
-Log Analytics + Application Insights (`monitoring`), a Container Registry, a managed Container
-Apps environment, a user-assigned managed identity for the app (so it can pull from the registry
-without a stored password), a small helper module that checks whether the app already exists (so
-re-running `azd up` updates in place instead of recreating), and the container app itself — each
-pinned to a specific published module version rather than copy-pasted resource JSON.
-`main.parameters.json` wires `azd`'s own environment variables
-(`${AZURE_ENV_NAME}`, `${AZURE_LOCATION}`, `${AZURE_PRINCIPAL_ID}`, ...) into those module params.
-
-## `azd up` — real output, and the real subscription check
-
 ```
-> azd up
+> curl -s -w "\nHTTP %{http_code}\n" https://quotes-api.wonderfulpebble-94a9da27.eastasia.azurecontainerapps.io/health
+Healthy
+HTTP 200
 
-WARNING: You must be logged into Azure perform this action
-Would you like to log in now? (Y/n)
-Retrieving subscriptions...
-  Logged in to Azure as shagunyadav1208@gmail.com
+> curl -s -w "\nHTTP %{http_code}\n" https://.../api/quotes
+[]
+HTTP 200
 
-ERROR: loading environment: loading environment 'thinkschool-quotes-api': locking .env: context canceled
-```
+> curl -s -w "\nHTTP %{http_code}\n" -X POST https://.../api/quotes \
+    -H "Content-Type: application/json" \
+    -d '{"author":"Ada Lovelace","text":"That brain of mine is something more than merely mortal."}'
+{"id":1,"author":"Ada Lovelace","text":"That brain of mine is something more than merely mortal.","createdAt":"2026-08-16T10:15:57.3981384+00:00"}
+HTTP 201
 
-(That last error is just this session's non-interactive shell running out of piped input at the
-next prompt — not a meaningful failure on its own.) The meaningful part is the silent login as a
-**different account** than the one Day 5 Piece 3 tried. Before doing anything else, I checked —
-without provisioning — whether this account has a subscription to actually deploy against:
-
-```
-> az login
-
-WARNING: The following tenants don't contain accessible subscriptions. Use `az login
---allow-no-subscriptions` to have tenant level access.
-WARNING: b69d82df-4ebe-474d-9ac7-00efbf13427e 'Thinkbridge'
-ERROR: No subscriptions found for shagunyadav1208@gmail.com.
+> curl -s -w "\nHTTP %{http_code}\n" https://.../api/quotes
+[{"id":1,"author":"Ada Lovelace","text":"That brain of mine is something more than merely mortal.","createdAt":"2026-08-16T10:15:57.3981384+00:00"}]
+HTTP 200
 ```
 
-It doesn't. Both accounts available in this environment — the Amity University one from Day 5
-Piece 3, and this personal one — are real Azure AD identities with a real tenant each, and neither
-has a billable subscription attached. So `azd up` stops here, honestly: no resource group, no
-Container Registry, no Container Apps environment, no live URL, no deployed app. Nothing was
-provisioned, and no curl output below is fabricated to pretend otherwise.
+Also confirmed live against this same deployment: the pagination and null-author validation fixes
+(same bugs as piece2, fixed identically here) hold up — `?page=0&size=10` returns only the `page`
+validation error, and `{"author": null, ...}` returns a clean 400 instead of a 500.
 
-If a subscription becomes available, `azd up` from `day-5/piece4/` with no further changes should
-provision and deploy this exactly as generated above — that's the entire point of the tool.
+## What's real vs. what's provisioned right now
+
+Everything above — every command, every log line, every curl response — is genuine output from
+this session. As of writing, the resources are still live under
+`rg-thinkschool-quotes-api` (eastasia): Container Registry, Log Analytics, Application Insights, a
+Container Apps environment, and the running `quotes-api` container app. Since Azure for Students
+credit is finite, whether to tear this down after review is worth deciding explicitly rather than
+leaving it running indefinitely.
 
 ## GitHub link
 
@@ -243,27 +158,27 @@ push yourself.)
 
 ## Notes for mentor
 
-The two real gaps this piece surfaced are both worth knowing before assigning this exercise
-elsewhere: (1) `azd init`'s "Confirm and continue" picker doesn't work from a plain non-interactive
-shell/CI-like environment without `AZD_NON_INTERACTIVE=false` and exact-text piped input — azd
-treats sandboxed/agent shells as non-interactive by default; and (2) the exercise's description of
-what `azd init` writes to disk (`infra/main.bicep` immediately) describes older azd behavior —
-current azd (1.31.1) keeps that in memory until `azd infra gen` is run explicitly.
+Three real, independent deployment bugs surfaced here, all only discoverable by actually running
+`azd deploy` against live Azure rather than by reading the Bicep or the csproj: a repository-path
+mismatch between what azd pushes and what it references, a libc mismatch between an Alpine base
+image and azd's own RID resolution (same underlying class of bug as piece2, reached through a
+different pipeline), and the non-root/`$HOME` writability issue piece2 already documented. Worth
+flagging that "copy an app that works standalone into an azd project" is not guaranteed to deploy
+cleanly without re-verifying its container-specific assumptions against azd's own build path
+specifically.
 
 ## What did I learn this session?
 
-`azd` and `az` don't share a credential cache, and `azd up`'s login prompt will silently reuse
-*whatever* cached Azure credential exists on the machine — which turned out to be a different
-account than the one I'd already confirmed had no subscription. The right instinct here was to
-stop and verify what that account actually had access to before letting a single "y" answer
-cascade into real provisioning, rather than assuming a successful login implies a usable
-subscription.
+A project's container properties (`ContainerImageName`, `ContainerBaseImage`, `ContainerFamily`)
+that are correct for one build path (a manual `dotnet publish /t:PublishContainer` + `docker run`)
+are not automatically correct for another (`azd deploy`, which owns image naming and RID
+resolution itself). Copying a working app's `.csproj` unmodified into a new deployment context
+doesn't carry its container assumptions safely — each needs re-verifying against how *that*
+specific pipeline actually builds and references images, not assumed compatible by analogy.
 
 ## What would break this?
 
-Even with a subscription, `azd up`'s auto-login-and-continue flow means a stray "yes" typed (or
-piped) at the wrong moment authenticates *and* starts provisioning against whatever account azd
-finds cached — not necessarily the one the person running it meant to use. Anyone scripting this
-non-interactively should pin the subscription explicitly (`azd env set AZURE_SUBSCRIPTION_ID
-<id>` or `azd init -s <subscription>`) rather than relying on whatever `azd up` happens to log
-into by default.
+The `/tmp` connection string means every new revision (redeploy, scale event, or restart) starts
+with an empty database — there is no persistent volume. For anything beyond this exercise, that
+needs a real persistent store (Azure Files mount, or swapping SQLite for a networked database)
+rather than a path inside the container's writable layer.
