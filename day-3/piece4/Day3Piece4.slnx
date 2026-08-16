@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Quotes.Domain/Quotes.Domain.csproj" />
+  <Project Path="Quotes.Tests.Unit/Quotes.Tests.Unit.csproj" />
+</Solution>
