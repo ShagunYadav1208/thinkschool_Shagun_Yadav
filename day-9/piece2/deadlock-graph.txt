@@ -1,0 +1,75 @@
+Real deadlock graph, captured from the SQL Server error log (trace flag 1222) after running
+session-a-deadlock.sql and session-b-deadlock.sql concurrently. Pulled from the raw ERRORLOG file
+via `docker cp`; also retrievable with `EXEC sp_readerrorlog 0, 1, N'deadlock-list';`.
+
+Trimmed for readability: each process's internal engine call-stack ("stackFrames", a dump of raw
+memory addresses used only for debugging the SQL Server engine itself, not the deadlock) has been
+cut. Every identifying field below (process ids, spids, timestamps, lock resources, isolation
+levels, and both sessions' actual submitted SQL in "inputbuf") is the real, unedited text SQL Server
+wrote to its own log.
+
+2026-08-19 04:28:22.94 spid53s     deadlock-list
+2026-08-19 04:28:22.95 spid53s      deadlock victim=processe91fb4108
+2026-08-19 04:28:22.95 spid53s       process-list
+
+2026-08-19 04:28:22.95 spid53s        process id=processe91fb4108 taskpriority=0 logused=240
+    waitresource=KEY: 5:72057594045726720 (8194443284a0) waittime=3254 ownerId=7042
+    transactionname=user_transaction lasttranstarted=2026-08-19T04:28:16.703 lockMode=X
+    status=suspended spid=77 ecid=0 trancount=2 lastbatchstarted=2026-08-19T04:28:16.687
+    clientapp=SQLCMD loginname=sa isolationlevel=read committed (2) xactid=7042
+    currentdbname=Day9Piece2
+
+        inputbuf
+        BEGIN TRAN;
+        PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  B: UPDATE AccountId = 2 (locks row 2)';
+        UPDATE Accounts SET Balance = Balance - 10.00 WHERE AccountId = 2;
+        WAITFOR DELAY '00:00:03';
+        PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  B: attempting UPDATE AccountId = 1 (needs row 1)...';
+        UPDATE Accounts SET Balance = Balance + 10.00 WHERE AccountId = 1;
+        PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  B: got row 1, committing';
+        COMMIT TRAN;
+
+2026-08-19 04:28:22.98 spid53s        process id=processe92177c28 taskpriority=0 logused=240
+    waitresource=KEY: 5:72057594045726720 (61a06abd401c) waittime=3255 ownerId=7040
+    transactionname=user_transaction lasttranstarted=2026-08-19T04:28:16.703 lockMode=X
+    status=suspended spid=78 ecid=0 trancount=2 lastbatchstarted=2026-08-19T04:28:16.693
+    clientapp=SQLCMD loginname=sa isolationlevel=read committed (2) xactid=7040
+    currentdbname=Day9Piece2
+
+        inputbuf
+        BEGIN TRAN;
+        PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  A: UPDATE AccountId = 1 (locks row 1)';
+        UPDATE Accounts SET Balance = Balance - 10.00 WHERE AccountId = 1;
+        WAITFOR DELAY '00:00:03';
+        PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  A: attempting UPDATE AccountId = 2 (needs row 2)...';
+        UPDATE Accounts SET Balance = Balance + 10.00 WHERE AccountId = 2;
+        PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  A: got row 2, committing';
+        COMMIT TRAN;
+
+2026-08-19 04:28:23.02 spid53s       resource-list
+2026-08-19 04:28:23.02 spid53s        keylock hobtid=72057594045726720 dbid=5
+    objectname=Day9Piece2.dbo.Accounts indexname=PK__Accounts__349DA5A6AE75BD8E
+    id=locke80566780 mode=X associatedObjectId=72057594045726720
+2026-08-19 04:28:23.02 spid53s         owner-list
+2026-08-19 04:28:23.02 spid53s          owner id=processe92177c28 mode=X
+2026-08-19 04:28:23.02 spid53s         waiter-list
+2026-08-19 04:28:23.02 spid53s          waiter id=processe91fb4108 mode=X requestType=wait
+
+2026-08-19 04:28:23.02 spid53s        keylock hobtid=72057594045726720 dbid=5
+    objectname=Day9Piece2.dbo.Accounts indexname=PK__Accounts__349DA5A6AE75BD8E
+    id=locke80567700 mode=X associatedObjectId=72057594045726720
+2026-08-19 04:28:23.02 spid53s         owner-list
+2026-08-19 04:28:23.02 spid53s          owner id=processe91fb4108 mode=X
+2026-08-19 04:28:23.02 spid53s         waiter-list
+2026-08-19 04:28:23.03 spid53s          waiter id=processe92177c28 mode=X requestType=wait
+
+------------------------------------------------------------------------------------------------
+The circular wait in one sentence: process e91fb4108 (spid 77, "Session B") owns the key lock on
+Account 2's row and waits on Account 1's; process e92177c28 (spid 78, "Session A") owns the key lock
+on Account 1's row and waits on Account 2's - each owns what the other is waiting for. SQL Server's
+lock monitor detected the cycle and killed process e91fb4108 (spid 77, Session B) as the victim.
+
+Victim's own session output (session-b-deadlock.sql):
+Msg 1205, Level 13, State 51, Server 2ab6bb34960a, Line 7
+Transaction (Process ID 77) was deadlocked on lock resources with another process and has been
+chosen as the deadlock victim. Rerun the transaction.
