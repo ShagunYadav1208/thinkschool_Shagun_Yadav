@@ -1,0 +1,88 @@
+Real deadlock graph captured on Azure SQL Database, via a database-scoped Extended Events session
+(trace flag 1222 and the error-log approach used in deadlock-graph.txt do NOT work on Azure SQL
+Database - see AZURE-REPORT.md for why). Trimmed for readability: each process's internal engine
+call-stack ("stackFrames") cut, same as deadlock-graph.txt. Every identifying field below (process
+ids, spids, timestamps, lock resources, isolation levels, both sessions' real "inputbuf" SQL) is the
+actual, unedited XML SQL Server wrote to the Extended Events ring buffer.
+
+Session used to capture this:
+  CREATE EVENT SESSION CaptureDeadlocks ON DATABASE
+      ADD EVENT sqlserver.database_xml_deadlock_report
+      ADD TARGET package0.ring_buffer
+      WITH (MAX_MEMORY = 4096 KB, STARTUP_STATE = ON);
+  ALTER EVENT SESSION CaptureDeadlocks ON DATABASE STATE = START;
+
+  -- after the repro --
+  SELECT CAST(target_data AS XML)
+  FROM sys.dm_xe_database_session_targets st
+  JOIN sys.dm_xe_database_sessions s ON s.address = st.event_session_address
+  WHERE s.name = 'CaptureDeadlocks' AND st.target_name = 'ring_buffer';
+
+<event name="database_xml_deadlock_report" package="sqlserver" timestamp="2026-08-19T05:08:00.754Z">
+  <data name="server_name"><value>sql-day9p2-6191</value></data>
+  <data name="database_name"><value>Day9Piece2</value></data>
+  <data name="xml_report"><value>
+    <deadlock>
+      <victim-list>
+        <victimProcess id="process2ca04ea1c18"/>
+      </victim-list>
+      <process-list>
+        <process id="process2ca04ea1c18" spid="80" lockMode="S" status="suspended"
+            waitresource="XACT: 5:1119:0 KEY: 5:72057594047823872 (8194443284a0)"
+            waittime="1525" lasttranstarted="2026-08-19T05:07:56.220"
+            isolationlevel="read committed (2)" currentdbname="Day9Piece2" loginname="sqladmin">
+          <inputbuf>
+            BEGIN TRAN;
+            PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  B: UPDATE AccountId = 2 (locks row 2)';
+            UPDATE Accounts SET Balance = Balance - 10.00 WHERE AccountId = 2;
+            WAITFOR DELAY '00:00:03';
+            PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  B: attempting UPDATE AccountId = 1 (needs row 1)...';
+            UPDATE Accounts SET Balance = Balance + 10.00 WHERE AccountId = 1;
+            PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  B: got row 1, committing';
+            COMMIT TRAN;
+          </inputbuf>
+        </process>
+        <process id="process2ca04e9f438" spid="78" lockMode="S" status="suspended"
+            waitresource="XACT: 5:1120:0 KEY: 5:72057594047823872 (61a06abd401c)"
+            waittime="1526" lasttranstarted="2026-08-19T05:07:56.220"
+            isolationlevel="read committed (2)" currentdbname="Day9Piece2" loginname="sqladmin">
+          <inputbuf>
+            BEGIN TRAN;
+            PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  A: UPDATE AccountId = 1 (locks row 1)';
+            UPDATE Accounts SET Balance = Balance - 10.00 WHERE AccountId = 1;
+            WAITFOR DELAY '00:00:03';
+            PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  A: attempting UPDATE AccountId = 2 (needs row 2)...';
+            UPDATE Accounts SET Balance = Balance + 10.00 WHERE AccountId = 2;
+            PRINT CONVERT(varchar, SYSDATETIME(), 121) + '  A: got row 2, committing';
+            COMMIT TRAN;
+          </inputbuf>
+        </process>
+      </process-list>
+      <resource-list>
+        <xactlock xdesIdLow="1119" dbid="5" mode="X">
+          <UnderlyingResource>
+            <keylock hobtid="72057594047823872" dbid="5"
+                objectname="430b9c58-5af1-4a50-a1f7-a4660ab35e71.dbo.Accounts"
+                indexname="PK__Accounts__349DA5A60CB59D77"/>
+          </UnderlyingResource>
+          <owner-list><owner id="process2ca04e9f438" mode="X"/></owner-list>
+          <waiter-list><waiter id="process2ca04ea1c18" mode="S" requestType="wait"/></waiter-list>
+        </xactlock>
+        <xactlock xdesIdLow="1120" dbid="5" mode="X">
+          <UnderlyingResource>
+            <keylock hobtid="72057594047823872" dbid="5"
+                objectname="430b9c58-5af1-4a50-a1f7-a4660ab35e71.dbo.Accounts"
+                indexname="PK__Accounts__349DA5A60CB59D77"/>
+          </UnderlyingResource>
+          <owner-list><owner id="process2ca04ea1c18" mode="X"/></owner-list>
+          <waiter-list><waiter id="process2ca04e9f438" mode="S" requestType="wait"/></waiter-list>
+        </xactlock>
+      </resource-list>
+    </deadlock>
+  </value></data>
+</event>
+
+Victim's own session output:
+Msg 1205, Level 13, State 72, Server sql-day9p2-6191, Line 7
+Transaction (Process ID 80) was deadlocked on lock resources with another process and has been
+chosen as the deadlock victim. Rerun the transaction.
