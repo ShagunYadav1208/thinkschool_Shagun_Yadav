@@ -1,0 +1,16 @@
+namespace QueryTranslationDemo;
+
+public class Quote
+{
+    public int Id { get; set; }
+    public string Author { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public class QuoteSummaryDto
+{
+    public int Id { get; set; }
+    public string Author { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+}
