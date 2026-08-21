@@ -1,0 +1,6 @@
+@SlowEndpointApi_HostAddress = http://localhost:5039
+
+GET {{SlowEndpointApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

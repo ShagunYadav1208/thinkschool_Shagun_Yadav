@@ -1,0 +1,48 @@
+Real captured output from the running SlowEndpointApi, EF Core's LogTo at Information level
+(Logging:LogLevel:Microsoft.EntityFrameworkCore=Information), for ONE HTTP GET to
+/authors-summary-slow against the 1,000-author / 10,000-quote seeded database.
+
+First query (1 of 1,001 total for this single request):
+
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (12ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [a].[AuthorId], [a].[Name]
+      FROM [Authors] AS [a]
+
+Then, for EVERY one of the 1,000 authors just returned, one more round trip - this is the N+1:
+
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (16ms) [Parameters=[@author_AuthorId='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Quotes] AS [q]
+      WHERE [q].[AuthorId] = @author_AuthorId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@author_AuthorId='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Quotes] AS [q]
+      WHERE [q].[AuthorId] = @author_AuthorId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@author_AuthorId='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Quotes] AS [q]
+      WHERE [q].[AuthorId] = @author_AuthorId
+... (997 more, identical shape, one per author) ...
+
+Verified count for this single request: exactly 1,000 "SELECT COUNT(*) FROM [Quotes]..." commands
+(grep -c "SELECT COUNT" over the log slice for this one request), plus the 1 "SELECT ... FROM
+[Authors]" - 1,001 database round trips to answer one HTTP GET.
+
+For comparison, the FIXED endpoint (/authors-summary-fast) issues exactly one command for the same
+logical result:
+
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (21ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [a].[AuthorId], [a].[Name], (
+          SELECT COUNT(*)
+          FROM [Quotes] AS [q]
+          WHERE [q].[AuthorId] = [a].[AuthorId]) AS [quoteCount]
+      FROM [Authors] AS [a]
+
+EF Core compiles the LINQ projection's per-author subquery into a correlated SQL subquery that SQL
+Server executes as part of ONE query plan (see execution-plan-fixed.txt) - not as 1,000 separate
+round trips issued by the application.

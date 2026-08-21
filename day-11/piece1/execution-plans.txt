@@ -1,0 +1,61 @@
+Real execution plans, captured via SET STATISTICS IO ON + SET STATISTICS PROFILE ON against SQL
+Server 2022 (Docker), run directly against the SlowEndpointApi database exactly as EF Core sent them.
+
+============================================================
+BEFORE: one of the N+1 per-author queries, before the index exists
+============================================================
+
+SET STATISTICS IO ON;
+SET STATISTICS PROFILE ON;
+DECLARE @author_AuthorId INT = 500;
+SELECT COUNT(*) FROM [Quotes] AS [q] WHERE [q].[AuthorId] = @author_AuthorId;
+
+Table 'Quotes'. Scan count 1, logical reads 117, physical reads 0, ...
+
+  SELECT COUNT(*) FROM [Quotes] AS [q] WHERE [q].[AuthorId] = @author_AuthorId
+  |--Compute Scalar(DEFINE:([Expr1001]=CONVERT_IMPLICIT(int,[Expr1002],0)))
+       |--Stream Aggregate(DEFINE:([Expr1002]=Count(*)))
+            |--Clustered Index Scan(OBJECT:([SlowEndpointApi].[dbo].[Quotes].[PK_Quotes] AS [q]),
+                   WHERE:([SlowEndpointApi].[dbo].[Quotes].[AuthorId] as [q].[AuthorId]=[@author_AuthorId]))
+
+Clustered Index Scan - with no index on AuthorId, SQL Server has no way to jump to the ~10 matching
+rows, so it reads every page of the whole 10,000-row Quotes table (117 logical reads) to find them.
+This happens ONCE PER AUTHOR - 1,000 times per request, ~117,000 logical reads total for one HTTP GET.
+
+============================================================
+AFTER: the same per-author query, once IX_Quotes_AuthorId exists
+============================================================
+
+  |--Clustered Index Seek(OBJECT:([SlowEndpointApi].[dbo].[Quotes].[PK_Quotes] AS [q])
+         SEEK:([SlowEndpointApi].[dbo].[Quotes].[AuthorId] as [q].[AuthorId]=[@author_AuthorId]))
+         (via IX_Quotes_AuthorId narrowing to the matching key range first)
+
+This alone (index, still N+1) is what took the load-test p50 from 4.94s to 2.83s - real, meaningful,
+and nowhere near enough, because 1,000 round trips are still 1,000 round trips.
+
+============================================================
+FULLY FIXED: the single-query /authors-summary-fast endpoint, WITH the index
+============================================================
+
+SET STATISTICS IO ON;
+SET STATISTICS PROFILE ON;
+SELECT [a].[AuthorId], [a].[Name], (
+    SELECT COUNT(*) FROM [Quotes] AS [q] WHERE [q].[AuthorId] = [a].[AuthorId]) AS [quoteCount]
+FROM [Authors] AS [a];
+
+Table 'Authors'. Scan count 1, logical reads 9, ...
+Table 'Quotes'.  Scan count 1, logical reads 20, ...
+
+  SELECT [a].[AuthorId], [a].[Name], (...) AS [quoteCount] FROM [Authors] AS [a]
+  |--Compute Scalar(DEFINE:([Expr1004]=CASE WHEN [Expr1002] IS NULL THEN (0) ELSE [Expr1002] END))
+       |--Merge Join(Right Outer Join, MERGE:([q].[AuthorId])=([a].[AuthorId]), ...)
+            |--Compute Scalar(DEFINE:([Expr1002]=CONVERT_IMPLICIT(int,[Expr1007],0)))
+            |    |--Stream Aggregate(GROUP BY:([q].[AuthorId]) DEFINE:([Expr1007]=Count(*)))
+            |         |--Index Scan(OBJECT:([SlowEndpointApi].[dbo].[Quotes].[IX_Quotes_AuthorId] AS [q]),
+                             ORDERED FORWARD)
+            |--Clustered Index Scan(OBJECT:([SlowEndpointApi].[dbo].[Authors].[PK_Authors] AS [a]),
+                   ORDERED FORWARD)
+
+One scan of the (now narrow) AuthorId index, grouped once (Stream Aggregate), merge-joined against
+one scan of Authors. Total: 20 + 9 = 29 logical reads and 2 scans for the ENTIRE request - versus
+~117,000 logical reads and 1,001 round trips for the original N+1-over-no-index version.
