@@ -1,0 +1,35 @@
+Real captured output from FixedEndpointApi, EF Core LogTo at Information level, one request each.
+
+============================================================
+BEFORE: /authors-summary-before (unchanged from day-11/piece1's anti-pattern)
+============================================================
+
+1 query for authors, then 1 MORE query PER AUTHOR - 1,001 total round trips for one HTTP GET
+(re-verified for this piece: identical shape and count to day-11/piece1):
+
+SELECT [a].[AuthorId], [a].[Name]
+FROM [Authors] AS [a]
+
+-- then, once per author, 1,000 times --
+SELECT COUNT(*)
+FROM [Quotes] AS [q]
+WHERE [q].[AuthorId] = @author_AuthorId
+
+============================================================
+AFTER: /authors-summary-after (.Include(a => a.Quotes).AsSplitQuery())
+============================================================
+
+Exactly 2 queries total - NOT one per author. The query count does not scale with the number of
+authors:
+
+SELECT [a].[AuthorId], [a].[Name]
+FROM [Authors] AS [a]
+ORDER BY [a].[AuthorId]
+
+SELECT [q].[QuoteId], [q].[AuthorId], [q].[CreatedAt], [q].[QuoteText], [a].[AuthorId]
+FROM [Authors] AS [a]
+INNER JOIN [Quotes] AS [q] ON [a].[AuthorId] = [q].[AuthorId]
+
+EF Core issues the second query ordered/joined so it can walk both result sets in lockstep and
+stitch each author's matching quotes into that author's `Quotes` collection in memory - one query,
+not one per author, regardless of how many authors exist.

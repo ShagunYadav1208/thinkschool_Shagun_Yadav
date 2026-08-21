@@ -1,0 +1,56 @@
+Real execution plans, captured via SET STATISTICS IO ON + SET STATISTICS PROFILE ON against
+SQL Server 2022 (Docker), for FixedEndpointApi's before and after query shapes.
+
+============================================================
+BEFORE: one of the 1,000 identical per-author queries (no index)
+============================================================
+
+SELECT COUNT(*) FROM [Quotes] AS [q] WHERE [q].[AuthorId] = @author_AuthorId
+
+|--Compute Scalar(...)
+     |--Stream Aggregate(DEFINE:([Expr1002]=Count(*)))
+          |--Clustered Index Scan(OBJECT:([FixedEndpointApi].[dbo].[Quotes].[PK_Quotes] AS [q]),
+                 WHERE:([q].[AuthorId]=[@author_AuthorId]))
+
+Table 'Quotes'. Scan count 1, logical reads 117
+
+Same as day-11/piece1: no index on AuthorId means a full scan of all 10,000 rows to find the ~10
+that match - done once per author, 1,000 times per request (~117,000 logical reads total).
+
+============================================================
+AFTER: the two split-query statements, with IX_Quotes_AuthorId in place
+============================================================
+
+-- Statement 1 --
+SELECT [a].[AuthorId], [a].[Name] FROM [Authors] AS [a] ORDER BY [a].[AuthorId]
+
+|--Clustered Index Scan(OBJECT:([FixedEndpointApi].[dbo].[Authors].[PK_Authors] AS [a]), ORDERED FORWARD)
+
+Table 'Authors'. Scan count 1, logical reads 9
+
+-- Statement 2 --
+SELECT [q].[QuoteId], [q].[AuthorId], [q].[CreatedAt], [q].[QuoteText], [a].[AuthorId]
+FROM [Authors] AS [a]
+INNER JOIN [Quotes] AS [q] ON [a].[AuthorId] = [q].[AuthorId]
+
+|--Hash Match(Inner Join, HASH:([a].[AuthorId])=([q].[AuthorId]))
+     |--Clustered Index Scan(OBJECT:([FixedEndpointApi].[dbo].[Authors].[PK_Authors] AS [a]))
+     |--Clustered Index Scan(OBJECT:([FixedEndpointApi].[dbo].[Quotes].[PK_Quotes] AS [q]))
+
+Table 'Authors'. Scan count 1, logical reads 9
+Table 'Quotes'.  Scan count 1, logical reads 117
+
+Total for the ENTIRE request: 9 + 9 + 117 = 135 logical reads, across 2 queries - versus ~117,000
+logical reads across 1,001 queries for the BEFORE version.
+
+Honest note on the index: statement 2's optimizer chooses a Clustered Index Scan on Quotes, NOT
+IX_Quotes_AuthorId - because this query needs every row of Quotes regardless of AuthorId (it's
+returning all 10,000 quotes for all 1,000 authors at once), a full scan of the table's own clustered
+index is the correct, cheapest plan; the narrower non-clustered index has nothing to offer a query
+that already needs 100% of the rows. A follow-up load test confirmed this isn't just a single-query
+artifact: repeated k6 runs against /authors-summary-after WITH the index present (p99 ~244-295ms)
+were consistently faster than WITHOUT it (p99 ~494ms) even though the captured plan above doesn't use
+it - plausibly because the narrower index changes buffer-pool/paging behavior under concurrent load
+in ways STATISTICS PROFILE on a single idle connection doesn't capture, but this wasn't dug into
+deeply enough to state as settled fact. Either way, the index is not what makes this endpoint fast -
+eliminating the N+1 pattern is what does that, by roughly two orders of magnitude on its own.
