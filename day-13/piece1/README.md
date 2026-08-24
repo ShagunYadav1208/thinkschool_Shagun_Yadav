@@ -1,5 +1,11 @@
 # Day 13 - Signals + zoneless + standalone
 
+> **This app no longer runs independently.** Its header bar / search / author dropdown / API-status
+> logic was merged into [day-13/piece2](../piece2)'s `quote-list-detail` component, so there'd be one
+> app on one port with one UI instead of two overlapping ones. Everything below is the real,
+> historical record of what was built and verified in *this* session - the code just isn't the thing
+> running anymore. See piece2's README for the merged, currently-running version.
+
 This exercise is different in kind from the rest of the week: the deliverable *is* the direct-and-
 verify loop, not just the code at the end of it. What follows is the brief given to the agent, the
 agent's resulting code verbatim, and a verification log grounded in a real, running Week-1 API and a

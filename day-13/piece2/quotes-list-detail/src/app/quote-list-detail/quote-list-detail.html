@@ -1,0 +1,93 @@
+<header class="header-bar">
+  <div class="header-inner">
+    <span class="brand">Quotes</span>
+
+    <div class="controls">
+      <div class="search">
+        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <input
+          type="search"
+          aria-label="Search quotes"
+          placeholder="Search by author or text..."
+          [value]="searchTerm()"
+          (input)="onSearchInput($any($event.target).value)"
+        />
+      </div>
+
+      <select
+        class="author-select"
+        aria-label="Filter by author"
+        [value]="selectedAuthor()"
+        (change)="onAuthorChange($any($event.target).value)"
+      >
+        <option value="">All authors</option>
+        @for (author of authors(); track author) {
+          <option [value]="author">{{ author }}</option>
+        }
+      </select>
+
+      <div class="api-indicator" [class]="'api-indicator--' + apiStatus()">
+        <span class="dot"></span>
+        @switch (apiStatus()) {
+          @case ('connected') { <span>API connected</span> }
+          @case ('disconnected') { <span>API disconnected</span> }
+          @default { <span>Checking API...</span> }
+        }
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <section class="list-pane">
+    <p class="subtitle">
+      @if (!listLoading() && quotes().length > 0) {
+        {{ filteredQuotes().length }} of {{ quotes().length }} quote{{ quotes().length === 1 ? '' : 's' }}
+      } @else {
+        A small collection of quotes
+      }
+    </p>
+
+    @if (listLoading()) {
+      <p class="status">Loading quotes...</p>
+    } @else if (apiStatus() === 'disconnected' && quotes().length === 0) {
+      <p class="status status--error">Can't reach the API. Retrying automatically...</p>
+    } @else if (quotes().length === 0) {
+      <p class="status">No quotes yet.</p>
+    } @else if (filteredQuotes().length === 0) {
+      <p class="status">No matches for "{{ searchTerm() }}".</p>
+    } @else {
+      <ul class="quote-list">
+        @for (quote of filteredQuotes(); track quote.id) {
+          <li>
+            <button
+              type="button"
+              class="quote-list-item"
+              [class.quote-list-item--selected]="selectedId() === quote.id"
+              (click)="selectQuote(quote.id)"
+            >
+              <span class="quote-list-item-author">{{ quote.author }}</span>
+              <span class="quote-list-item-preview">{{ quote.text }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section class="detail-pane">
+    @if (selectedId() === null) {
+      <p class="status">Select a quote to see its detail.</p>
+    } @else if (detailLoading()) {
+      <p class="status">Loading detail...</p>
+    } @else if (detailError()) {
+      <p class="status status--error">Quote not found.</p>
+    } @else if (detail(); as quote) {
+      <blockquote>{{ quote.text }}</blockquote>
+      <p class="author">- {{ quote.author }}</p>
+    }
+  </section>
+</div>
