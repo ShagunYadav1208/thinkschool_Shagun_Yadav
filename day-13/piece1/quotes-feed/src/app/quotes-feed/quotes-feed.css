@@ -1,0 +1,253 @@
+:host {
+  display: block;
+}
+
+/* Header bar */
+
+.header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  border-bottom: 1px solid #ececef;
+}
+
+.header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111;
+  white-space: nowrap;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Search */
+
+.search {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.7rem;
+  transform: translateY(-50%);
+  color: #a0a0a6;
+  pointer-events: none;
+}
+
+.search input {
+  width: 220px;
+  padding: 0.5rem 0.75rem 0.5rem 2.15rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a1a;
+  background: #f6f6f8;
+  border: 1px solid #e2e2e6;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.search input::placeholder {
+  color: #a0a0a6;
+}
+
+.search input:focus {
+  background: #fff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Author dropdown */
+
+.author-select {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1a1a1a;
+  background: #f6f6f8;
+  border: 1px solid #e2e2e6;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.author-select:focus {
+  background: #fff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* API connection indicator */
+
+.api-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.api-indicator--connected {
+  color: #15803d;
+  background: #f0fdf4;
+}
+.api-indicator--connected .dot {
+  background: #22c55e;
+}
+
+.api-indicator--disconnected {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+.api-indicator--disconnected .dot {
+  background: #ef4444;
+}
+
+.api-indicator--checking {
+  color: #92600a;
+  background: #fffbeb;
+}
+.api-indicator--checking .dot {
+  background: #f59e0b;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Page content */
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.subtitle {
+  margin: 0 0 1.5rem;
+  color: #8a8a8f;
+  font-size: 0.9rem;
+}
+
+/* Quote list */
+
+.quote-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.85rem;
+}
+
+.quote-card {
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 1.25rem 1.4rem;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.quote-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.quote-card blockquote {
+  margin: 0 0 0.6rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+
+.quote-card blockquote::before {
+  content: '\201C';
+  color: #c7c7ff;
+  font-weight: 700;
+}
+
+.quote-card blockquote::after {
+  content: '\201D';
+  color: #c7c7ff;
+  font-weight: 700;
+}
+
+.author {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+/* Status / empty / loading states */
+
+.status {
+  text-align: center;
+  padding: 3.5rem 1rem;
+  color: #8a8a8f;
+}
+
+.status-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #4a4a4f;
+}
+
+.status-hint {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 1rem;
+  border: 3px solid #e2e2e6;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
