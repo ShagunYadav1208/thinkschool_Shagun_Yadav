@@ -41,6 +41,10 @@
   </div>
 </header>
 
+<div class="content-wrap">
+  <app-create-quote-form (created)="onQuoteCreated($event)" />
+</div>
+
 <div class="layout">
   <section class="list-pane">
     <p class="subtitle">

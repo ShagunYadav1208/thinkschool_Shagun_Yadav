@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, interval, map, of, startWith, Subject, switchMap } from 'rxjs';
 import { QuotesService } from '../quotes.service';
 import { Quote } from '../models/quote.model';
+import { CreateQuoteForm } from '../create-quote-form/create-quote-form';
 
 const HEALTH_CHECK_INTERVAL_MS = 8000;
 
@@ -11,6 +12,7 @@ type ApiStatus = 'checking' | 'connected' | 'disconnected';
 @Component({
   selector: 'app-quote-list-detail',
   standalone: true,
+  imports: [CreateQuoteForm],
   templateUrl: './quote-list-detail.html',
   styleUrl: './quote-list-detail.css',
 })
@@ -121,5 +123,12 @@ export class QuoteListDetail implements OnInit {
     this.detailLoading.set(true);
     this.detailError.set(false);
     this.select$.next(id);
+  }
+
+  // The create-quote form emits the server's real response (id included) -
+  // prepended straight into the shared `quotes` signal, so it shows up in
+  // the list/search/dropdown immediately, no reload and no extra GET.
+  protected onQuoteCreated(quote: Quote): void {
+    this.quotes.update((current) => [quote, ...current]);
   }
 }
