@@ -1,0 +1,74 @@
+<header class="header-bar">
+  <div class="header-inner">
+    <span class="brand">Quotes</span>
+
+    <nav class="tabs" aria-label="Quote views">
+      <button
+        type="button"
+        class="tab"
+        [class.tab--active]="activeTab() === 'explore'"
+        [attr.aria-current]="activeTab() === 'explore' ? 'page' : null"
+        (click)="setTab('explore')"
+      >
+        Explore
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.tab--active]="activeTab() === 'create'"
+        [attr.aria-current]="activeTab() === 'create' ? 'page' : null"
+        (click)="setTab('create')"
+      >
+        Create
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.tab--active]="activeTab() === 'signal-forms'"
+        [attr.aria-current]="activeTab() === 'signal-forms' ? 'page' : null"
+        (click)="setTab('signal-forms')"
+      >
+        Signal Forms
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.tab--active]="activeTab() === 'all'"
+        [attr.aria-current]="activeTab() === 'all' ? 'page' : null"
+        (click)="setTab('all')"
+      >
+        All Quotes
+      </button>
+    </nav>
+
+    <div class="api-indicator" [class]="'api-indicator--' + store.apiStatus()">
+      <span class="dot"></span>
+      @switch (store.apiStatus()) {
+        @case ('connected') { <span>API connected</span> }
+        @case ('disconnected') { <span>API disconnected</span> }
+        @default { <span>Checking API...</span> }
+      }
+    </div>
+  </div>
+</header>
+
+<main>
+  @switch (activeTab()) {
+    @case ('explore') {
+      <app-explore-view />
+    }
+    @case ('create') {
+      <div class="content-wrap">
+        <app-create-quote-form (created)="onQuoteCreated($event)" />
+      </div>
+    }
+    @case ('signal-forms') {
+      <div class="content-wrap">
+        <app-create-quote-form-signal (created)="onQuoteCreated($event)" />
+      </div>
+    }
+    @case ('all') {
+      <app-all-quotes-view />
+    }
+  }
+</main>
