@@ -1,0 +1,78 @@
+<div class="toolbar">
+  <div class="search">
+    <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+    <input
+      type="search"
+      aria-label="Search quotes"
+      placeholder="Search by author or text..."
+      [value]="store.searchTerm()"
+      (input)="onSearchInput($any($event.target).value)"
+    />
+  </div>
+
+  <select
+    class="author-select"
+    aria-label="Filter by author"
+    [value]="store.selectedAuthor()"
+    (change)="onAuthorChange($any($event.target).value)"
+  >
+    <option value="">All authors</option>
+    @for (author of store.authors(); track author) {
+      <option [value]="author">{{ author }}</option>
+    }
+  </select>
+</div>
+
+<div class="layout">
+  <section class="list-pane">
+    <p class="subtitle">
+      @if (!store.listLoading() && store.quotes().length > 0) {
+        {{ store.filteredQuotes().length }} of {{ store.quotes().length }} quote{{ store.quotes().length === 1 ? '' : 's' }}
+      } @else {
+        A small collection of quotes
+      }
+    </p>
+
+    @if (store.listLoading()) {
+      <p class="status">Loading quotes...</p>
+    } @else if (store.apiStatus() === 'disconnected' && store.quotes().length === 0) {
+      <p class="status status--error">Can't reach the API. Retrying automatically...</p>
+    } @else if (store.quotes().length === 0) {
+      <p class="status">No quotes yet.</p>
+    } @else if (store.filteredQuotes().length === 0) {
+      <p class="status">No matches for "{{ store.searchTerm() }}".</p>
+    } @else {
+      <ul class="quote-list">
+        @for (quote of store.filteredQuotes(); track quote.id) {
+          <li>
+            <button
+              type="button"
+              class="quote-list-item"
+              [class.quote-list-item--selected]="store.selectedId() === quote.id"
+              (click)="selectQuote(quote.id)"
+            >
+              <span class="quote-list-item-author">{{ quote.author }}</span>
+              <span class="quote-list-item-preview">{{ quote.text }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section class="detail-pane">
+    @if (store.selectedId() === null) {
+      <p class="status">Select a quote to see its detail.</p>
+    } @else if (store.detailLoading()) {
+      <p class="status">Loading detail...</p>
+    } @else if (store.detailError()) {
+      <p class="status status--error">Quote not found.</p>
+    } @else if (store.detail(); as quote) {
+      <blockquote>{{ quote.text }}</blockquote>
+      <p class="author">- {{ quote.author }}</p>
+    }
+  </section>
+</div>
