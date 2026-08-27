@@ -1,0 +1,38 @@
+<div class="page">
+  <a class="back-link" routerLink="/quotes">&larr; Back to quotes</a>
+
+  @switch (status()) {
+    @case ('loading') {
+      <p class="status">Loading quote {{ id() }}...</p>
+    }
+    @case ('invalid') {
+      <div class="status status--warn" role="alert">
+        <p class="status-title">"{{ id() }}" isn't a valid quote id.</p>
+        <p class="status-hint">
+          The API only accepts a positive integer here - this never even reaches the server.
+        </p>
+      </div>
+    }
+    @case ('not-found') {
+      <div class="status status--warn" role="alert">
+        <p class="status-title">No quote with id {{ id() }}.</p>
+        <p class="status-hint">HTTP 404 - a real, empty-body response from the API.</p>
+      </div>
+    }
+    @case ('error') {
+      <div class="status status--error" role="alert">
+        <p class="status-title">{{ error()?.friendlyMessage }}</p>
+        <p class="status-hint">HTTP {{ error()?.status }}</p>
+      </div>
+    }
+    @case ('found') {
+      @if (quote(); as q) {
+        <article class="quote-detail">
+          <h2 [style.view-transition-name]="'quote-title-' + q.id">{{ q.author }}</h2>
+          <blockquote>{{ q.text }}</blockquote>
+          <p class="id-tag">id: {{ q.id }}</p>
+        </article>
+      }
+    }
+  }
+</div>

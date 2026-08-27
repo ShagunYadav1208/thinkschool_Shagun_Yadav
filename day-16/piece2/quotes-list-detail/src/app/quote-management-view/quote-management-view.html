@@ -1,0 +1,44 @@
+<div class="page">
+  <p class="subtitle">Page {{ store.page() }} - GET /api/quotes/?page&amp;size, DELETE /api/quotes/&#123;id&#125;</p>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p class="status">Loading page {{ store.page() }}...</p>
+    }
+    @case ('error') {
+      <div class="status status--error" role="alert">
+        <p class="status-title">{{ store.error()?.friendlyMessage }}</p>
+        <p class="status-hint">HTTP {{ store.error()?.status }}</p>
+      </div>
+    }
+    @case ('empty') {
+      <p class="status">No quotes on page {{ store.page() }}.</p>
+    }
+    @case ('loaded') {
+      <ul class="quote-list">
+        @for (quote of store.quotes(); track quote.id) {
+          <li class="quote-row">
+            <div class="quote-body">
+              <blockquote>{{ quote.text }}</blockquote>
+              <p class="author">- {{ quote.author }} (id: {{ quote.id }})</p>
+            </div>
+            <button
+              type="button"
+              class="delete-btn"
+              [disabled]="store.deletingIds().has(quote.id)"
+              (click)="store.deleteQuote(quote.id)"
+            >
+              {{ store.deletingIds().has(quote.id) ? 'Deleting...' : 'Delete' }}
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  <div class="pager">
+    <button type="button" [disabled]="!store.hasPrevious()" (click)="store.previous()">&larr; Previous</button>
+    <span class="page-num">Page {{ store.page() }}</span>
+    <button type="button" [disabled]="!store.hasNext()" (click)="store.next()">Next &rarr;</button>
+  </div>
+</div>
