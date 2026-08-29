@@ -1,0 +1,41 @@
+name: Deploy QuotesApi to Azure App Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "day-17/piece1/QuotesApi/**"
+
+permissions:
+  id-token: write   # required for OIDC federated login - no client secret involved
+  contents: read
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish
+        run: dotnet publish day-17/piece1/QuotesApi/QuotesApi.csproj -c Release -o ${{ github.workspace }}/publish
+
+      # AZURE_CLIENT_ID/AZURE_TENANT_ID/AZURE_SUBSCRIPTION_ID are identifiers,
+      # not credentials - the actual trust is the federated-credential subject
+      # match (this repo, this branch) configured in infra/deploy.md step 4.
+      # No publish profile, no client secret, nothing rotatable stored here.
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: syquotes17-api
+          package: ${{ github.workspace }}/publish
