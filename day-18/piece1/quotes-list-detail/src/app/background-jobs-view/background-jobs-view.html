@@ -1,0 +1,67 @@
+<div class="page">
+  <p class="subtitle">
+    Day 18: <code>POST /api/jobs/quote-analysis/&#123;quoteId&#125;</code> enqueues a ~5s "analysis" job onto
+    a <code>Channel</code>-backed queue and returns <code>202 Accepted</code> immediately - a
+    <code>BackgroundService</code> (<code>QueuedHostedService</code>) drains the queue on its own
+    loop, off the request thread.
+  </p>
+
+  <form class="controls" (submit)="$event.preventDefault(); enqueue()">
+    <label>
+      Quote ID
+      <input
+        type="number"
+        name="quoteId"
+        min="1"
+        [value]="quoteId()"
+        (input)="onQuoteIdInput($any($event.target).value)"
+      />
+    </label>
+    <button type="submit" [disabled]="enqueueing()">
+      {{ enqueueing() ? 'Queuing...' : 'Enqueue analysis' }}
+    </button>
+  </form>
+
+  <p class="hint">
+    Each job takes ~5 real seconds (chunked into 1s steps) - enough time to watch it move from
+    Queued to Running to Completed below (this table polls every second). Stopping the API
+    mid-job (Ctrl+C) cancels the in-flight job cleanly via its <code>CancellationToken</code>
+    instead of the process dying mid-write - see the README for the graceful-shutdown log.
+  </p>
+
+  @if (error(); as err) {
+    <div class="status status--error" role="alert">
+      <p class="status-title">{{ err.friendlyMessage }}</p>
+      <p class="status-hint">HTTP {{ err.status }}</p>
+    </div>
+  }
+
+  @if (jobs().length === 0) {
+    <p class="status">No jobs yet - enqueue one above.</p>
+  } @else {
+    <table class="job-table">
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Input</th>
+          <th>Status</th>
+          <th>Result / error</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (job of jobs(); track job.id) {
+          <tr>
+            <td class="job-id" [title]="job.id">{{ job.id.slice(0, 8) }}</td>
+            <td>Quote #{{ job.input }}</td>
+            <td>
+              <span class="badge" [class]="statusClass(job)">{{ statusLabel[job.status] }}</span>
+            </td>
+            <td class="job-outcome">{{ job.error ?? job.result ?? '-' }}</td>
+            <td>{{ formatTime(job.createdAt) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
