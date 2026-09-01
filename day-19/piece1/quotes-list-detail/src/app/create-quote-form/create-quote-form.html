@@ -1,0 +1,49 @@
+<form class="create-quote-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <h2>Add a quote</h2>
+
+  <div class="field">
+    <label for="author-input">Author</label>
+    <input
+      #authorInput
+      id="author-input"
+      type="text"
+      formControlName="author"
+      [attr.maxlength]="limits.author"
+      [attr.aria-invalid]="isInvalid('author') ? 'true' : null"
+      [attr.aria-describedby]="isInvalid('author') ? 'author-error author-counter' : 'author-counter'"
+    />
+    @if (isInvalid('author')) {
+      <p id="author-error" class="error" role="alert">{{ errorMessage('author') }}</p>
+    }
+    <p id="author-counter" class="counter" [class.counter-limit]="isNearLimit('author')" aria-live="polite">
+      {{ charCount('author') }} / {{ limits.author }}
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="text-input">Quote text</label>
+    <textarea
+      #textInput
+      id="text-input"
+      rows="3"
+      formControlName="text"
+      [attr.maxlength]="limits.text"
+      [attr.aria-invalid]="isInvalid('text') ? 'true' : null"
+      [attr.aria-describedby]="isInvalid('text') ? 'text-error text-counter' : 'text-counter'"
+    ></textarea>
+    @if (isInvalid('text')) {
+      <p id="text-error" class="error" role="alert">{{ errorMessage('text') }}</p>
+    }
+    <p id="text-counter" class="counter" [class.counter-limit]="isNearLimit('text')" aria-live="polite">
+      {{ charCount('text') }} / {{ limits.text }}
+    </p>
+  </div>
+
+  @if (serverError()) {
+    <p class="error" role="alert">{{ serverError() }}</p>
+  }
+
+  <button type="submit" [disabled]="submitting()">
+    {{ submitting() ? 'Adding...' : 'Add quote' }}
+  </button>
+</form>
