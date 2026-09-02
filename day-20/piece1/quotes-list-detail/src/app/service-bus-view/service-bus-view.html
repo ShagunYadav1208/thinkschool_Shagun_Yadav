@@ -1,0 +1,139 @@
+<div class="page">
+  <p class="subtitle">
+    Day 19: creating a quote publishes a <code>QuoteCreated</code> event to the real
+    <code>quote-events</code> Azure Service Bus topic. Two subscriptions consume it independently -
+    <code>audit-log</code> (two competing <code>ServiceBusProcessor</code> workers) and
+    <code>notifications</code> (one processor, plus the dead-letter demo below).
+  </p>
+
+  <section class="panel">
+    <h3>Publish a quote event</h3>
+    <form class="controls" (submit)="$event.preventDefault(); createQuote()">
+      <label>
+        Author
+        <input type="text" name="author" [value]="author()" (input)="onAuthorInput($any($event.target).value)" />
+      </label>
+      <label class="grow">
+        Text
+        <input type="text" name="text" [value]="text()" (input)="onTextInput($any($event.target).value)" />
+      </label>
+      <button type="submit" [disabled]="publishing()">
+        {{ publishing() ? 'Publishing...' : 'Create + publish' }}
+      </button>
+    </form>
+
+    <div class="action-row">
+      <button type="button" [disabled]="lastQuoteId() === null" (click)="replayLast()">
+        Replay last event (same message id)
+      </button>
+      <button type="button" class="danger" (click)="sendPoison()">Send poison message</button>
+    </div>
+
+    @if (lastQuoteId(); as id) {
+      <p class="hint">
+        Last created quote id: {{ id }} - replay re-sends its exact event with the same message id,
+        simulating a publisher retry. Poison messages fail 3 times (~45s) before landing in the DLQ
+        below.
+      </p>
+    }
+
+    @if (error(); as err) {
+      <div class="status status--error" role="alert">
+        <p class="status-title">{{ err.friendlyMessage }}</p>
+        <p class="status-hint">HTTP {{ err.status }}</p>
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Audit log <span class="panel-hint">audit-log subscription, 2 competing workers</span></h3>
+    @if (auditLog().length === 0) {
+      <p class="status">No events yet.</p>
+    } @else {
+      <div class="table-scroll">
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th>Message</th>
+              <th>Quote</th>
+              <th>Handled by</th>
+              <th>Duplicate?</th>
+              <th>At</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of auditLog(); track entry.messageId + entry.handledAt) {
+              <tr>
+                <td class="mono" [title]="entry.messageId">{{ entry.messageId.slice(0, 8) }}</td>
+                <td>#{{ entry.quoteId }} - {{ entry.author }}</td>
+                <td><span class="badge" [class]="'badge--' + entry.handledBy">{{ entry.handledBy }}</span></td>
+                <td>{{ entry.wasDuplicate ? 'Yes (skipped)' : 'No' }}</td>
+                <td>{{ formatTime(entry.handledAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Notifications <span class="panel-hint">notifications subscription</span></h3>
+    @if (notifications().length === 0) {
+      <p class="status">No notifications yet.</p>
+    } @else {
+      <div class="table-scroll">
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th>Message</th>
+              <th>Text</th>
+              <th>Duplicate?</th>
+              <th>At</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of notifications(); track entry.messageId + entry.handledAt) {
+              <tr>
+                <td class="mono" [title]="entry.messageId">{{ entry.messageId.slice(0, 8) }}</td>
+                <td>{{ entry.message }}</td>
+                <td>{{ entry.wasDuplicate ? 'Yes (skipped)' : 'No' }}</td>
+                <td>{{ formatTime(entry.handledAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Dead-letter queue <span class="panel-hint">notifications subscription's DLQ</span></h3>
+    @if (dlq().length === 0) {
+      <p class="status">Empty - send a poison message above and wait about 45 seconds (3 delivery attempts, 15s lock each) to see it land here.</p>
+    } @else {
+      <div class="table-scroll">
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th>Message</th>
+              <th>Reason</th>
+              <th>Deliveries</th>
+              <th>Body</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (msg of dlq(); track msg.messageId) {
+              <tr>
+                <td class="mono" [title]="msg.messageId">{{ msg.messageId.slice(0, 8) }}</td>
+                <td><span class="badge badge--dlq">{{ msg.deadLetterReason }}</span></td>
+                <td>{{ msg.deliveryCount }}</td>
+                <td class="mono small">{{ msg.body }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

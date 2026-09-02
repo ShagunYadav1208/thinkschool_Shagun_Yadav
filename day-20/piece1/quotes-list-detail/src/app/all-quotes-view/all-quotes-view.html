@@ -1,0 +1,26 @@
+<div class="page">
+  <p class="subtitle">
+    @if (!store.listLoading()) {
+      {{ store.quotes().length }} quote{{ store.quotes().length === 1 ? '' : 's' }} total
+    } @else {
+      Loading quotes...
+    }
+  </p>
+
+  @if (store.listLoading()) {
+    <p class="status">Loading quotes...</p>
+  } @else if (store.apiStatus() === 'disconnected' && store.quotes().length === 0) {
+    <p class="status status--error">Can't reach the API. Retrying automatically...</p>
+  } @else if (store.quotes().length === 0) {
+    <p class="status">No quotes yet.</p>
+  } @else {
+    <div class="quote-grid">
+      @for (quote of store.quotes(); track quote.id) {
+        <article class="quote-card">
+          <blockquote>{{ quote.text }}</blockquote>
+          <p class="author">- {{ quote.author }}</p>
+        </article>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,189 @@
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.subtitle {
+  margin: 0 0 1.5rem;
+  color: #6b6b70;
+  font-size: 0.85rem;
+}
+
+.subtitle code {
+  background: #f2f2f7;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.panel h3 {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.panel-hint {
+  font-weight: 400;
+  color: #8a8a8f;
+  font-size: 0.78rem;
+  margin-left: 0.4rem;
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #3f3f46;
+}
+
+.controls label.grow {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.controls input {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.controls button,
+.action-row button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #4338ca;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.controls button:disabled,
+.action-row button:disabled {
+  background: #a5a5b0;
+  cursor: not-allowed;
+}
+
+.action-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.action-row button.danger {
+  background: #b91c1c;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  color: #8a8a8f;
+  font-size: 0.8rem;
+}
+
+.status {
+  color: #6b6b70;
+  font-size: 0.9rem;
+}
+
+.status--error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.status-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.status-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #991b1b;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.event-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.event-table th {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  color: #6b6b70;
+  font-weight: 600;
+  border-bottom: 1px solid #ececef;
+  white-space: nowrap;
+}
+
+.event-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #f2f2f7;
+  vertical-align: top;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #8a8a8f;
+}
+
+.mono.small {
+  font-size: 0.75rem;
+  max-width: 24rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.badge--audit-worker-1 {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.badge--audit-worker-2 {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.badge--dlq {
+  background: #fef2f2;
+  color: #b91c1c;
+}

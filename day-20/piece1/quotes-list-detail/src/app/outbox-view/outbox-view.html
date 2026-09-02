@@ -1,0 +1,93 @@
+<div class="page">
+  <p class="subtitle">
+    Day 20: <code>POST /api/quotes/</code> now writes the domain row AND an outbox row in one EF
+    transaction - a separate relay (<code>OutboxRelayService</code>) polls for unprocessed rows
+    every 2s and is the only thing that ever publishes to Service Bus.
+  </p>
+
+  <section class="panel">
+    <h3>Create a quote</h3>
+    <form class="controls" (submit)="$event.preventDefault(); createQuote()">
+      <label>
+        Author
+        <input type="text" name="author" [value]="author()" (input)="onAuthorInput($any($event.target).value)" />
+      </label>
+      <label class="grow">
+        Text
+        <input type="text" name="text" [value]="text()" (input)="onTextInput($any($event.target).value)" />
+      </label>
+      <button type="submit" [disabled]="publishing()">
+        {{ publishing() ? 'Creating...' : 'Create + queue' }}
+      </button>
+    </form>
+
+    <div class="action-row">
+      <button type="button" class="danger" [disabled]="publishing()" (click)="sendCrashTest()">
+        Run crash test (publish twice, handle once)
+      </button>
+    </div>
+
+    <p class="hint">
+      The crash test publishes a quote whose text carries the relay's crash-injection marker. The
+      relay publishes it successfully, then is torn down before marking the row sent - so on its
+      NEXT poll it republishes the exact same row (same message id). Watch the row below: Attempts
+      goes 1 -&gt; 2, and the audit-log column shows two deliveries for the same message id - one
+      marked a duplicate.
+    </p>
+
+    @if (error(); as err) {
+      <div class="status status--error" role="alert">
+        <p class="status-title">{{ err.friendlyMessage }}</p>
+        <p class="status-hint">HTTP {{ err.status }}</p>
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Outbox <span class="panel-hint">written in the same transaction as the quote; relayed asynchronously</span></h3>
+
+    @if (outbox().length === 0) {
+      <p class="status">No outbox rows yet - create a quote above.</p>
+    } @else {
+      <div class="table-scroll">
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th>Outbox row</th>
+              <th>Quote</th>
+              <th>Status</th>
+              <th>Attempts</th>
+              <th>Created</th>
+              <th>Deliveries seen downstream</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of outbox(); track row.id) {
+              <tr>
+                <td class="mono" [title]="row.id">{{ row.id.slice(0, 8) }}</td>
+                <td>#{{ row.quoteId }}</td>
+                <td>
+                  @if (row.processedAt) {
+                    <span class="badge badge--sent">Sent</span>
+                  } @else {
+                    <span class="badge badge--pending">Pending</span>
+                  }
+                </td>
+                <td>{{ row.attempts }}</td>
+                <td>{{ formatTime(row.createdAt) }}</td>
+                <td>
+                  @for (entry of auditEntriesFor(row.id); track entry.handledAt) {
+                    <div class="delivery" [class.delivery--duplicate]="entry.wasDuplicate">
+                      {{ entry.handledBy }} @ {{ formatTime(entry.handledAt) }}
+                      {{ entry.wasDuplicate ? '(duplicate, skipped)' : '(first delivery)' }}
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
