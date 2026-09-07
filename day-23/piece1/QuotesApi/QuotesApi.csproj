@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
+    <PackageReference Include="Microsoft.Azure.StackExchangeRedis" Version="3.3.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <!--
+      SqlServer provider talks to Azure SQL in Production. Microsoft.Data.SqlClient
+      (pulled in transitively) understands "Authentication=Active Directory Managed
+      Identity" directly in the connection string - no Azure.Identity token-acquisition
+      code needed, and no password/secret in that string either.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
+    <!--
+      Pinned to the 6.x line deliberately, NOT the newer 7.x major. EF Core
+      10.0.11's SqlServer provider does a reflection-based lookup for SQL
+      Server's vector type support during static type-mapping init, hardcoded
+      to the exact assembly identity "Microsoft.Data.SqlClient, Version=6.0.0.0"
+      (confirmed via a live crash log: pinning 7.0.2, whose assembly version is
+      7.0.0.0, threw FileNotFoundException citing that exact 6.0.0.0 identity,
+      purely from calling Database.IsSqlServer() - before ever opening a
+      connection). Every 6.x package version keeps assembly version 6.0.0.0,
+      so any 6.x satisfies it; 7.x does not yet.
+    -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.6" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.9.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
+  </ItemGroup>
+
+</Project>

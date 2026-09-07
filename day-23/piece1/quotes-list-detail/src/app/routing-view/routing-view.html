@@ -1,0 +1,10 @@
+<div class="routing-bar">
+  <span class="routing-status" [class.routing-status--in]="authService.isAuthenticated()">
+    {{ authService.isAuthenticated() ? 'Logged in' : 'Logged out' }}
+  </span>
+  @if (authService.isAuthenticated()) {
+    <button type="button" (click)="logOut()">Log out</button>
+  }
+</div>
+
+<router-outlet />

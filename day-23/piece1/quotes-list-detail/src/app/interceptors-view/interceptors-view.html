@@ -1,0 +1,61 @@
+<div class="page">
+  <p class="subtitle">
+    Live against the real Week-1 API's <code>GET /api/quotes?page=&amp;size=</code> - every request here
+    goes through the auth, retry-with-backoff, and error-mapping interceptors.
+  </p>
+
+  <form class="controls" (submit)="$event.preventDefault(); load()">
+    <label>
+      Page
+      <input
+        type="number"
+        name="page"
+        [value]="page()"
+        (input)="onPageInput($any($event.target).value)"
+      />
+    </label>
+    <label>
+      Size
+      <input
+        type="number"
+        name="size"
+        [value]="size()"
+        (input)="onSizeInput($any($event.target).value)"
+      />
+    </label>
+    <button type="submit" [disabled]="loading()">
+      {{ loading() ? 'Loading...' : 'Load page' }}
+    </button>
+  </form>
+
+  <p class="hint">Try page=0 or size=500 to trigger the real API's 400 ValidationProblemDetails.</p>
+
+  @if (loading()) {
+    <p class="status">Loading quotes...</p>
+  } @else if (error(); as err) {
+    <div class="status status--error" role="alert">
+      <p class="status-title">{{ err.friendlyMessage }}</p>
+      <p class="status-hint">HTTP {{ err.status }}</p>
+      @if (err.fieldErrors) {
+        <ul class="field-errors">
+          @for (field of Object.keys(err.fieldErrors); track field) {
+            <li><strong>{{ field }}</strong>: {{ err.fieldErrors[field].join(', ') }}</li>
+          }
+        </ul>
+      }
+    </div>
+  } @else if (hasLoaded() && quotes().length === 0) {
+    <p class="status">No quotes on this page.</p>
+  } @else if (hasLoaded()) {
+    <div class="quote-grid">
+      @for (quote of quotes(); track quote.id) {
+        <article class="quote-card">
+          <blockquote>{{ quote.text }}</blockquote>
+          <p class="author">- {{ quote.author }}</p>
+        </article>
+      }
+    </div>
+  } @else {
+    <p class="status">Set a page/size and click "Load page".</p>
+  }
+</div>
