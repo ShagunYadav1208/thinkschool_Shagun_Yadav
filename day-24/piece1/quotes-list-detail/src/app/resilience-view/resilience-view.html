@@ -1,0 +1,178 @@
+<div class="page">
+  <p class="subtitle">
+    Day 22: <code>GET /api/resilience/enrich/&#123;id&#125;</code> calls an outbound dependency
+    through a Polly pipeline - bulkhead, then retry (idempotent-only, exponential backoff), then a
+    circuit breaker, then a per-attempt timeout. The dependency itself is controllable from this
+    tab so the breaker's open/half-open/closed cycle can be reproduced on demand.
+  </p>
+
+  <section class="panel">
+    <h3>
+      Live pipeline counters <span class="panel-hint">polls GET /api/resilience/metrics every 2s</span>
+    </h3>
+
+    @if (metrics(); as m) {
+      <div class="state-row">
+        <span class="state-badge" [class]="'state-badge--' + m.circuitState.toLowerCase()">
+          Circuit: {{ m.circuitState }}
+        </span>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="metric-value">{{ m.dependencyAttempts }}</span>
+          <span class="metric-label">Dependency attempts</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.dependencySuccesses }}</span>
+          <span class="metric-label">Successes</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.dependencyFailures }}</span>
+          <span class="metric-label">Failures</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.retries }}</span>
+          <span class="metric-label">Retries</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.timeouts }}</span>
+          <span class="metric-label">Timeouts</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.bulkheadRejections }}</span>
+          <span class="metric-label">Bulkhead rejections</span>
+        </div>
+        <div class="metric metric--highlight">
+          <span class="metric-value">{{ m.circuitRejections }}</span>
+          <span class="metric-label">Circuit rejections</span>
+        </div>
+      </div>
+
+      @if (m.timeline.length > 0) {
+        <div class="timeline">
+          <p class="timeline-title">Circuit transition timeline</p>
+          <ol class="timeline-list">
+            @for (t of m.timeline; track t.at) {
+              <li>
+                <span class="timeline-time">{{ formatTime(t.at) }}</span>
+                <span class="timeline-state" [class]="'timeline-state--' + circuitStateName(t.state).toLowerCase()">
+                  {{ circuitStateName(t.state) }}
+                </span>
+              </li>
+            }
+          </ol>
+        </div>
+      }
+    } @else {
+      <p class="status">Loading counters...</p>
+    }
+
+    <div class="action-row">
+      <button type="button" (click)="resetMetrics()">Reset counters</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Dependency control <span class="panel-hint">what FlakyDependencyHandler does on the next call</span></h3>
+
+    <form class="controls" (submit)="$event.preventDefault()">
+      <label>
+        Mode
+        <select [ngModel]="selectedMode()" name="mode" (ngModelChange)="selectedMode.set($event)">
+          @for (mode of modes; track mode) {
+            <option [value]="mode">{{ mode }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Latency (ms)
+        <input type="number" min="0" name="latencyMs" [value]="latencyMs()" (input)="onLatencyInput($any($event.target).value)" />
+      </label>
+      <label>
+        Failure rate % <span class="field-hint">(Intermittent only)</span>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          name="failureRatePercent"
+          [value]="failureRatePercent()"
+          (input)="onFailureRateInput($any($event.target).value)"
+        />
+      </label>
+      <button type="button" [disabled]="configuring()" (click)="applyDependencyConfig()">Apply</button>
+    </form>
+
+    @if (dependency(); as dep) {
+      <p class="hint">
+        Currently: <strong>{{ dep.mode }}</strong>, {{ dep.latencyMs }}ms latency
+        @if (dep.mode === 'Intermittent') {
+          , {{ dep.failureRatePercent }}% failure rate
+        }
+      </p>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Fire enrich calls <span class="panel-hint">sequential, one at a time - watch the counters above</span></h3>
+
+    <form class="controls" (submit)="$event.preventDefault()">
+      <label>
+        Quote id
+        <input type="number" min="1" name="quoteId" [value]="quoteId()" (input)="onQuoteIdInput($any($event.target).value)" />
+      </label>
+      <label>
+        Number of calls
+        <input type="number" min="1" max="50" name="callCount" [value]="callCount()" (input)="onCallCountInput($any($event.target).value)" />
+      </label>
+      <button type="button" [disabled]="firing() || runningDemo()" (click)="fireBatch()">
+        {{ firing() ? 'Firing...' : 'Fire calls' }}
+      </button>
+    </form>
+
+    @if (log().length > 0) {
+      <ul class="log-list">
+        @for (entry of log(); track entry.index) {
+          <li [class]="'log-entry log-entry--' + entry.outcome">
+            <span class="log-index">#{{ entry.index }}</span>
+            <span class="log-outcome">{{ entry.outcome }}</span>
+            @if (entry.detail) {
+              <span class="log-detail">{{ entry.detail }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Run circuit breaker demo <span class="panel-hint">fail the dependency, prove it opens, recover, prove it closes</span></h3>
+
+    <p class="hint">
+      Automates the full proof: configures the dependency to always fail, fires calls until the
+      breaker opens, confirms a rejected call never reaches the dependency, waits out the break
+      duration, heals the dependency, and confirms the half-open trial closes the circuit again.
+    </p>
+
+    <div class="action-row">
+      <button type="button" [disabled]="firing() || runningDemo()" (click)="runBreakerDemo()">
+        {{ runningDemo() ? 'Running (takes ~10s)...' : 'Run breaker demo' }}
+      </button>
+    </div>
+
+    @if (demoNarration().length > 0) {
+      <ol class="narration-list">
+        @for (line of demoNarration(); track $index) {
+          <li>{{ line }}</li>
+        }
+      </ol>
+    }
+
+    @if (error(); as err) {
+      <div class="status status--error" role="alert">
+        <p class="status-title">{{ err.friendlyMessage }}</p>
+        <p class="status-hint">HTTP {{ err.status }}</p>
+      </div>
+    }
+  </section>
+</div>
