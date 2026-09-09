@@ -1,0 +1,63 @@
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.subtitle {
+  margin: 0 0 0.75rem;
+  color: #6b6b70;
+  font-size: 0.85rem;
+}
+
+.status {
+  color: #6b6b70;
+  font-size: 0.9rem;
+}
+
+.status--error {
+  color: #b91c1c;
+}
+
+.quote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.quote-card {
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.quote-card blockquote {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.quote-card blockquote::before {
+  content: '\201C';
+  color: #c7c7ff;
+  font-weight: 700;
+}
+
+.quote-card blockquote::after {
+  content: '\201D';
+  color: #c7c7ff;
+  font-weight: 700;
+}
+
+.quote-card .author {
+  margin: 0;
+  font-weight: 600;
+  color: #4338ca;
+  font-size: 0.9rem;
+}

@@ -1,0 +1,108 @@
+<div class="page">
+  <p class="subtitle">
+    Day 21: <code>GET /api/quotes/&#123;id&#125;</code> now sits behind <code>HybridCache</code> - an
+    in-process L1 always on, plus a Redis L2 (local Docker for this session). Concurrent misses on
+    the same key collapse into one factory call instead of each hitting the DB - HybridCache's
+    built-in stampede protection.
+  </p>
+
+  <section class="panel">
+    <h3>Live cache counters <span class="panel-hint">polls GET /api/cache/metrics every 2s</span></h3>
+
+    @if (metrics(); as m) {
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="metric-value">{{ m.dbReads }}</span>
+          <span class="metric-label">DB reads</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.cacheRequests }}</span>
+          <span class="metric-label">Cache requests</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.cacheHits }}</span>
+          <span class="metric-label">Cache hits</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">{{ m.cacheMisses }}</span>
+          <span class="metric-label">Cache misses</span>
+        </div>
+        <div class="metric metric--highlight">
+          <span class="metric-value">{{ m.hitRatePercent }}%</span>
+          <span class="metric-label">Hit rate</span>
+        </div>
+      </div>
+      <div class="hit-bar" [attr.aria-label]="m.hitRatePercent + '% cache hit rate'">
+        <div class="hit-bar-fill" [style.width.%]="m.hitRatePercent"></div>
+      </div>
+    } @else {
+      <p class="status">Loading counters...</p>
+    }
+
+    <div class="action-row">
+      <button type="button" (click)="resetMetrics()">Reset counters</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Compare a single read</h3>
+
+    <form class="controls" (submit)="$event.preventDefault()">
+      <label>
+        Quote id
+        <input type="number" min="1" name="quoteId" [value]="quoteId()" (input)="onQuoteIdInput($any($event.target).value)" />
+      </label>
+      <button type="button" [disabled]="fetching()" (click)="fetchCached()">Fetch (cached)</button>
+      <button type="button" [disabled]="fetching()" (click)="fetchUncached()">Fetch (uncached)</button>
+      <button type="button" class="secondary" [disabled]="fetching()" (click)="evictCurrent()">Evict this id</button>
+    </form>
+
+    <p class="hint">
+      Both buttons call the exact same repository method - one through <code>HybridCache</code>,
+      one bypassing it. A cold cached fetch pays the simulated 150ms DB cost once; a warm one
+      returns near-instantly. Evict first to force the next cached fetch back to a real miss.
+    </p>
+
+    @if (lastFetch(); as result) {
+      <div class="result">
+        <p class="result-label">{{ result.label }}</p>
+        <p class="result-value">{{ result.ms.toFixed(1) }}ms</p>
+        <p class="result-quote">&ldquo;{{ result.quote.text }}&rdquo; &mdash; {{ result.quote.author }}</p>
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Stampede protection <span class="panel-hint">evict + reset + N concurrent requests</span></h3>
+
+    <form class="controls" (submit)="$event.preventDefault()">
+      <label>
+        Concurrent requests
+        <input type="number" min="1" max="500" name="concurrency" [value]="concurrency()" (input)="onConcurrencyInput($any($event.target).value)" />
+      </label>
+      <button type="button" [disabled]="stampeding()" (click)="runStampede()">
+        {{ stampeding() ? 'Running...' : 'Run stampede test' }}
+      </button>
+    </form>
+
+    <p class="hint">
+      Evicts quote {{ quoteId() }}, zeroes the counters, then fires {{ concurrency() }} requests
+      for it at once from the browser. Without stampede protection this would be
+      {{ concurrency() }} DB reads; HybridCache should collapse them into 1.
+    </p>
+
+    @if (stampedeResult(); as result) {
+      <div class="result" [class.result--good]="result.dbReads <= 2">
+        <p class="result-label">{{ result.concurrency }} concurrent requests</p>
+        <p class="result-value">{{ result.dbReads }} DB read{{ result.dbReads === 1 ? '' : 's' }}</p>
+      </div>
+    }
+
+    @if (error(); as err) {
+      <div class="status status--error" role="alert">
+        <p class="status-title">{{ err.friendlyMessage }}</p>
+        <p class="status-hint">HTTP {{ err.status }}</p>
+      </div>
+    }
+  </section>
+</div>

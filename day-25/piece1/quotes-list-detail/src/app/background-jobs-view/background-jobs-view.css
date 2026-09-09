@@ -1,0 +1,161 @@
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.subtitle {
+  margin: 0 0 1rem;
+  color: #6b6b70;
+  font-size: 0.85rem;
+}
+
+.subtitle code {
+  background: #f2f2f7;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #3f3f46;
+}
+
+.controls input {
+  width: 5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.controls button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #4338ca;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.controls button:disabled {
+  background: #a5a5b0;
+  cursor: not-allowed;
+}
+
+.hint {
+  margin: 0 0 1.5rem;
+  color: #8a8a8f;
+  font-size: 0.8rem;
+}
+
+.hint code {
+  background: #f2f2f7;
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.status {
+  color: #6b6b70;
+  font-size: 0.9rem;
+}
+
+.status--error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.status-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.status-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #991b1b;
+}
+
+.job-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.job-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: #6b6b70;
+  font-weight: 600;
+  border-bottom: 1px solid #ececef;
+}
+
+.job-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #f2f2f7;
+  vertical-align: top;
+}
+
+.job-id {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #8a8a8f;
+}
+
+.job-outcome {
+  max-width: 22rem;
+  white-space: pre-wrap;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge--queued {
+  background: #f2f2f7;
+  color: #52525b;
+}
+
+.badge--running {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.badge--completed {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badge--failed {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.badge--cancelled {
+  background: #fffbeb;
+  color: #b45309;
+}

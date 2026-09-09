@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: thinkschool-quotesapi-day24
+metadata:
+  template: thinkschool-quotesapi-day24@0.1.0
+
+# Only the backend is provisioned/deployed through azd in this piece - the
+# frontend (quotes-list-detail/) is copied in unmodified from day-23/piece1
+# purely as read-only reference (per this piece's scope: "the full stack"
+# means the same API + SQL + Service Bus stack day-23 defined, now driven by
+# azd + Deployment Stacks instead of `az deployment sub create`). The
+# frontend still deploys via its existing day-17 Static Web App pipeline,
+# untouched by this piece.
+services:
+  api:
+    project: ./QuotesApi
+    host: appservice
+    language: dotnet

@@ -1,0 +1,45 @@
+<form class="create-quote-form" novalidate (submit)="$event.preventDefault(); onSubmit()">
+  <h2>Add a quote (Signal Forms)</h2>
+
+  <div class="field">
+    <label for="author-input">Author</label>
+    <input
+      id="author-input"
+      type="text"
+      [formField]="quoteForm.author"
+      [attr.aria-invalid]="quoteForm.author().invalid() && (quoteForm.author().touched() || quoteForm.author().dirty()) ? 'true' : null"
+      [attr.aria-describedby]="quoteForm.author().invalid() && (quoteForm.author().touched() || quoteForm.author().dirty()) ? 'author-error author-counter' : 'author-counter'"
+    />
+    @if (quoteForm.author().invalid() && (quoteForm.author().touched() || quoteForm.author().dirty())) {
+      <p id="author-error" class="error" role="alert">{{ quoteForm.author().errors()[0]?.message }}</p>
+    }
+    <p id="author-counter" class="counter" aria-live="polite">
+      {{ quoteForm.author().value().length }} / {{ limits.author }}
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="text-input">Quote text</label>
+    <textarea
+      id="text-input"
+      rows="3"
+      [formField]="quoteForm.text"
+      [attr.aria-invalid]="quoteForm.text().invalid() && (quoteForm.text().touched() || quoteForm.text().dirty()) ? 'true' : null"
+      [attr.aria-describedby]="quoteForm.text().invalid() && (quoteForm.text().touched() || quoteForm.text().dirty()) ? 'text-error text-counter' : 'text-counter'"
+    ></textarea>
+    @if (quoteForm.text().invalid() && (quoteForm.text().touched() || quoteForm.text().dirty())) {
+      <p id="text-error" class="error" role="alert">{{ quoteForm.text().errors()[0]?.message }}</p>
+    }
+    <p id="text-counter" class="counter" aria-live="polite">
+      {{ quoteForm.text().value().length }} / {{ limits.text }}
+    </p>
+  </div>
+
+  @if (serverError()) {
+    <p class="error" role="alert">{{ serverError() }}</p>
+  }
+
+  <button type="submit" [disabled]="quoteForm().submitting()">
+    {{ quoteForm().submitting() ? 'Adding...' : 'Add quote' }}
+  </button>
+</form>

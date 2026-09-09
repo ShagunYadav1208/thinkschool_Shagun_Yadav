@@ -1,0 +1,298 @@
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.page {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.subtitle {
+  margin: 0 0 1.5rem;
+  color: #6b6b70;
+  font-size: 0.85rem;
+}
+
+.subtitle code {
+  background: #f2f2f7;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.panel h3 {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.panel-hint {
+  font-weight: 400;
+  color: #8a8a8f;
+  font-size: 0.78rem;
+  margin-left: 0.4rem;
+}
+
+.state-row {
+  margin-bottom: 0.9rem;
+}
+
+.state-badge {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.state-badge--open {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.state-badge--halfopen {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.state-badge--isolated {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  background: #f9f9fb;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+}
+
+.metric--highlight {
+  background: #eef2ff;
+}
+
+.metric-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1f1f23;
+}
+
+.metric--highlight .metric-value {
+  color: #4338ca;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: #8a8a8f;
+}
+
+.timeline {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.timeline-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  color: #8a8a8f;
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.timeline-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f9f9fb;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.timeline-time {
+  color: #8a8a8f;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-state {
+  font-weight: 700;
+  color: #047857;
+}
+
+.timeline-state--open {
+  color: #b91c1c;
+}
+
+.timeline-state--halfopen {
+  color: #b45309;
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #3f3f46;
+}
+
+.field-hint {
+  font-weight: 400;
+  color: #b0b0b6;
+  font-size: 0.75rem;
+}
+
+.controls input,
+.controls select {
+  width: 9rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.controls button,
+.action-row button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #4338ca;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.controls button:disabled,
+.action-row button:disabled {
+  background: #a5a5b0;
+  cursor: not-allowed;
+}
+
+.action-row {
+  margin-bottom: 0.5rem;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  color: #8a8a8f;
+  font-size: 0.8rem;
+}
+
+.log-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.log-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  background: #f9f9fb;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.log-index {
+  color: #b0b0b6;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-outcome {
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.log-entry--success .log-outcome {
+  color: #047857;
+}
+
+.log-entry--circuit-open .log-outcome,
+.log-entry--dependency-failed .log-outcome {
+  color: #b91c1c;
+}
+
+.log-entry--timeout .log-outcome,
+.log-entry--bulkhead-rejected .log-outcome {
+  color: #b45309;
+}
+
+.log-detail {
+  color: #8a8a8f;
+  font-size: 0.78rem;
+}
+
+.narration-list {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #3f3f46;
+}
+
+.status {
+  color: #6b6b70;
+  font-size: 0.9rem;
+}
+
+.status--error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.status-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.status-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #991b1b;
+}
