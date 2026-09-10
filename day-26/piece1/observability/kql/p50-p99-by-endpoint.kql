@@ -1,0 +1,17 @@
+// p50/p99 request latency by endpoint, last 1 hour.
+// Table: requests - populated by the Azure Monitor OpenTelemetry exporter from
+// ASP.NET Core's server-kind Activities (OpenTelemetry.Instrumentation.AspNetCore,
+// wired in Observability/TelemetryExtensions.cs). operation_Name is the route
+// template (e.g. "POST /api/quotes/{id}"), not the raw URL - so /api/quotes/17 and
+// /api/quotes/42 aggregate together instead of each getting their own row.
+requests
+| where timestamp > ago(1h)
+| summarize
+    requestCount = count(),
+    failedCount = countif(success == false),
+    p50Ms = percentile(duration, 50),
+    p90Ms = percentile(duration, 90),
+    p99Ms = percentile(duration, 99)
+    by operation_Name
+| extend errorRatePercent = round(100.0 * failedCount / requestCount, 2)
+| order by p99Ms desc

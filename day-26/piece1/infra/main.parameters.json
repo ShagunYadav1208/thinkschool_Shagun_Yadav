@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "resourceGroupName": {
+      "value": "${RESOURCE_GROUP_NAME}"
+    },
+    "serviceBusResourceGroupName": {
+      "value": "${SERVICEBUS_RESOURCE_GROUP_NAME}"
+    },
+    "sqlAadAdminObjectId": {
+      "value": "${AZURE_PRINCIPAL_ID}"
+    },
+    "sqlAadAdminName": {
+      "value": "${SQL_AAD_ADMIN_NAME}"
+    },
+    "apiAppName": {
+      "value": "${API_APP_NAME}"
+    },
+    "apiServicePlanName": {
+      "value": "${API_SERVICE_PLAN_NAME}"
+    },
+    "apiSkuName": {
+      "value": "${API_SKU_NAME}"
+    },
+    "apiSkuTier": {
+      "value": "${API_SKU_TIER}"
+    },
+    "corsAllowedOrigin": {
+      "value": "${CORS_ALLOWED_ORIGIN}"
+    },
+    "sqlServerName": {
+      "value": "${SQL_SERVER_NAME}"
+    },
+    "serviceBusNamespaceName": {
+      "value": "${SERVICEBUS_NAMESPACE_NAME}"
+    },
+    "keyVaultName": {
+      "value": "${KEY_VAULT_NAME}"
+    },
+    "redisConnectionStringSecretValue": {
+      "value": "${REDIS_CONNECTION_STRING_SECRET_VALUE}"
+    },
+    "logAnalyticsWorkspaceName": {
+      "value": "${LOG_ANALYTICS_WORKSPACE_NAME}"
+    },
+    "appInsightsName": {
+      "value": "${APP_INSIGHTS_NAME}"
+    }
+  }
+}

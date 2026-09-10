@@ -1,0 +1,23 @@
+// Dependency call breakdown, last 1 hour.
+// Table: dependencies - populated from CLIENT-kind Activities. Two distinct sources feed this
+// table in this app, both automatic (see Observability/TelemetryExtensions.cs's header comment):
+//   - EntityFrameworkCore instrumentation: every SQL command QuotesDbContext issues
+//     (type == "SQL" once run against real Azure SQL - locally against SQLite it's "SQL" too,
+//     but `name`/`target` reflect SQLite's own db.name, which is literally "main" - see
+//     README "A real, honest surprise: SQLite's db.name is 'main'").
+//   - The Azure SDK's own built-in tracing for Azure.Messaging.ServiceBus (captured via the
+//     "Azure.*" ActivitySource wildcard, zero custom instrumentation code) - Send/Receive/Process
+//     calls against the quote-events topic.
+// INTERNAL-kind spans (this app's own custom "outbox.relay" span - see
+// Observability/QuotesApiActivitySource.cs) land here too, tagged type == "InProc" - the
+// worker-hop half of the "API -> worker -> DB" story this piece needs to prove.
+dependencies
+| where timestamp > ago(1h)
+| summarize
+    callCount = count(),
+    failedCount = countif(success == false),
+    avgMs = round(avg(duration), 2),
+    p95Ms = percentile(duration, 95)
+    by type, target, name
+| extend failureRatePercent = round(100.0 * failedCount / callCount, 2)
+| order by callCount desc

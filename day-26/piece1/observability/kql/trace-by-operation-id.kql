@@ -1,0 +1,21 @@
+// Pull every telemetry item for ONE distributed trace, in time order - this is the Log
+// Analytics equivalent of the Jaeger trace view in screenshots/jaeger-distributed-trace.png.
+// operation_Id is Application Insights' name for the W3C trace ID (the same 32-hex-char value
+// OutboxMessage.TraceParent stores, and the same value Jaeger's UI shows in its trace URL) -
+// once this app is actually exporting to Azure Monitor instead of the local Jaeger collector
+// this session used, the exact request captured in that screenshot would be queryable as:
+//
+//   union requests, dependencies, traces, exceptions
+//   | where operation_Id == "84852af89decb72bce6252eda9967e9f"
+//   | project timestamp, itemType, name, operation_Name, duration, success, message
+//   | order by timestamp asc
+//
+// Parameterized version below (substitute a real operation_Id from the `requests` table first -
+// e.g. `requests | where name == "POST /api/quotes/" | top 1 by timestamp desc | project
+// operation_Id` - to find the most recent one).
+declare query_parameters(traceId: string = "");
+union requests, dependencies, traces, exceptions
+| where timestamp > ago(1h)
+| where operation_Id == traceId
+| project timestamp, itemType, name, operation_Name, duration, success, message
+| order by timestamp asc

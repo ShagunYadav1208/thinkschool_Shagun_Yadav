@@ -1,0 +1,13 @@
+// Error-rate alert condition. Deployed as the actual alert query in
+// infra/modules/alerts.bicep's Microsoft.Insights/scheduledQueryRules resource
+// (evaluationFrequency PT5M, windowSize PT5M, fires when this query returns any row) -
+// this file and that resource's inline query must be kept identical; this copy exists so
+// the query is reviewable without reading Bicep string-interpolation syntax.
+//
+// ${errorRateThreshold} below is the Bicep module's parameter (default 5, i.e. 5%) -
+// substituted at deploy time. Shown here with the literal default for readability.
+requests
+| where timestamp > ago(5m)
+| summarize total = count(), failed = countif(success == false)
+| extend errorRatePercent = round(100.0 * failed / total, 2)
+| where errorRatePercent > 5
