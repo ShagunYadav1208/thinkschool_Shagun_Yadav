@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ParkFlow.Modules.Parking.Domain\ParkFlow.Modules.Parking.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\ParkFlow.BuildingBlocks.Application\ParkFlow.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

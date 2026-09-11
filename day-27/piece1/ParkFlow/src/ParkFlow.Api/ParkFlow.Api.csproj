@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Composition root: the API references each module's Application layer for its endpoints,
+         and each module's Infrastructure layer only to wire dependency injection in Program.cs.
+         Modules never reference each other's projects. -->
+    <ProjectReference Include="..\Modules\Parking\ParkFlow.Modules.Parking.Application\ParkFlow.Modules.Parking.Application.csproj" />
+    <ProjectReference Include="..\Modules\Parking\ParkFlow.Modules.Parking.Infrastructure\ParkFlow.Modules.Parking.Infrastructure.csproj" />
+
+    <ProjectReference Include="..\Modules\Reservation\ParkFlow.Modules.Reservation.Application\ParkFlow.Modules.Reservation.Application.csproj" />
+    <ProjectReference Include="..\Modules\Reservation\ParkFlow.Modules.Reservation.Infrastructure\ParkFlow.Modules.Reservation.Infrastructure.csproj" />
+
+    <ProjectReference Include="..\Modules\Vehicle\ParkFlow.Modules.Vehicle.Application\ParkFlow.Modules.Vehicle.Application.csproj" />
+    <ProjectReference Include="..\Modules\Vehicle\ParkFlow.Modules.Vehicle.Infrastructure\ParkFlow.Modules.Vehicle.Infrastructure.csproj" />
+
+    <ProjectReference Include="..\Modules\Payment\ParkFlow.Modules.Payment.Application\ParkFlow.Modules.Payment.Application.csproj" />
+    <ProjectReference Include="..\Modules\Payment\ParkFlow.Modules.Payment.Infrastructure\ParkFlow.Modules.Payment.Infrastructure.csproj" />
+
+    <ProjectReference Include="..\Modules\Notification\ParkFlow.Modules.Notification.Application\ParkFlow.Modules.Notification.Application.csproj" />
+    <ProjectReference Include="..\Modules\Notification\ParkFlow.Modules.Notification.Infrastructure\ParkFlow.Modules.Notification.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

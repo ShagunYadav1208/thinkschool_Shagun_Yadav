@@ -1,0 +1,18 @@
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://0.0.0.0:5299
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\shagu\Documents\Coding\ThinkBridge\thinkschool_Shagun_Yadav\day-27\piece1\ParkFlow\src\ParkFlow.Api
+info: ParkFlow.Api.Security.ApiKeyAuthenticationHandler[7]
+      ApiKey was not authenticated. Failure message: Missing X-Api-Key header.
+info: ParkFlow.Api.Security.ApiKeyAuthenticationHandler[7]
+      ApiKey was not authenticated. Failure message: Missing X-Api-Key header.
+info: ParkFlow.Api.Security.ApiKeyAuthenticationHandler[7]
+      ApiKey was not authenticated. Failure message: Missing X-Api-Key header.
+info: ParkFlow.Api.Security.ApiKeyAuthenticationHandler[7]
+      ApiKey was not authenticated. Failure message: Missing X-Api-Key header.
+info: ParkFlow.Api.Security.ApiKeyAuthenticationHandler[12]
+      AuthenticationScheme: ApiKey was challenged.
