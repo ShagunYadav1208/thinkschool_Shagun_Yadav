@@ -38,6 +38,12 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.9.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
+    <!--
+      Day 25: validates the Entra ID access token AddMicrosoftIdentityWebApi
+      wires up in InfrastructureExtensions.cs - no custom JWT-validation code,
+      just this package's standard middleware pointed at the AzureAd config
+      section.
+    -->
     <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
   </ItemGroup>
 

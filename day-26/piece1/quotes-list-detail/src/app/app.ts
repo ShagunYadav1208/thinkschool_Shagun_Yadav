@@ -1,5 +1,6 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { AuthService } from './core/auth.service';
+import { environment } from '../environments/environment';
 import { CreateQuoteForm } from './create-quote-form/create-quote-form';
 import { CreateQuoteFormSignal } from './create-quote-form-signal/create-quote-form-signal';
 import { ExploreView } from './explore-view/explore-view';
@@ -13,6 +14,7 @@ import { OutboxView } from './outbox-view/outbox-view';
 import { CacheView } from './cache-view/cache-view';
 import { ResilienceView } from './resilience-view/resilience-view';
 import { QuotesStore } from './quotes-store';
+import { QuoteManagementStore } from './quote-management-store';
 import { Quote } from './models/quote.model';
 
 type Tab =
@@ -50,6 +52,7 @@ type Tab =
 })
 export class App {
   protected readonly store = inject(QuotesStore);
+  private readonly quoteManagementStore = inject(QuoteManagementStore);
 
   // Injected here (root component, always constructed first, regardless of
   // activeTab's initial value) purely so AuthService's constructor - and
@@ -66,6 +69,10 @@ export class App {
   // started ANOTHER loginRedirect() - an infinite "keeps asking to log in"
   // loop with no error, confirmed live in the browser before this fix.
   protected readonly authService = inject(AuthService);
+
+  // Read once - reflects app.html's login wall, which hides every tab
+  // (Explore included) until this is either false or the user is signed in.
+  protected readonly authEnabled = environment.authEnabled;
 
   // Defaults to 'explore', EXCEPT a direct/reloaded deep link into the
   // router's own URLs (/quotes, /quotes/:id, /login) - without this, the
@@ -85,7 +92,21 @@ export class App {
   );
 
   constructor() {
-    this.store.start();
+    // Gated on sign-in (when authEnabled): app.html doesn't render any tab -
+    // Explore included - until the user is signed in, but that alone
+    // wouldn't stop THIS call, since it runs here in the root constructor
+    // regardless of what the template shows. Without this guard, `start()`
+    // fired its `/api/quotes` request immediately on boot, before the user
+    // ever saw a login screen - MsalInterceptor caught that request, found
+    // no account, and forced an interactive redirect to Microsoft itself, on
+    // every single page load - confirmed live in day-25. `start()` is
+    // idempotent (quotes-store.ts), so it's safe to let this effect re-run
+    // past its first true.
+    effect(() => {
+      if (!this.authEnabled || this.authService.isAuthenticated()) {
+        this.store.start();
+      }
+    });
 
     // A loginRedirect() started from the 'routing' tab always lands back on
     // bare `redirectUri`, which the signal above resolves to 'explore' (no
@@ -111,6 +132,11 @@ export class App {
 
   protected onQuoteCreated(quote: Quote): void {
     this.store.onQuoteCreated(quote);
+    // QuoteManagementStore (the 'manage' tab) keeps its own independent copy
+    // of the list, fetched once on start() - it has no other way to learn
+    // about a quote created from here, so without this it stayed stale until
+    // a full page reload. See QuoteManagementStore.refresh()'s own comment.
+    this.quoteManagementStore.refresh();
     this.activeTab.set('explore');
   }
 }

@@ -12,6 +12,7 @@ import { OutboxView } from './outbox-view/outbox-view';
 import { CacheView } from './cache-view/cache-view';
 import { ResilienceView } from './resilience-view/resilience-view';
 import { QuotesStore } from './quotes-store';
+import { QuoteManagementStore } from './quote-management-store';
 import { Quote } from './models/quote.model';
 
 type Tab =
@@ -49,6 +50,7 @@ type Tab =
 })
 export class App {
   protected readonly store = inject(QuotesStore);
+  private readonly quoteManagementStore = inject(QuoteManagementStore);
 
   // Defaults to 'explore', EXCEPT a direct/reloaded deep link into the
   // router's own URLs (/login, /quotes, /quotes/:id) - without this, the
@@ -77,6 +79,11 @@ export class App {
 
   protected onQuoteCreated(quote: Quote): void {
     this.store.onQuoteCreated(quote);
+    // QuoteManagementStore (the 'manage' tab) keeps its own independent copy
+    // of the list, fetched once on start() - it has no other way to learn
+    // about a quote created from here, so without this it stayed stale until
+    // a full page reload. See QuoteManagementStore.refresh()'s own comment.
+    this.quoteManagementStore.refresh();
     this.activeTab.set('explore');
   }
 }

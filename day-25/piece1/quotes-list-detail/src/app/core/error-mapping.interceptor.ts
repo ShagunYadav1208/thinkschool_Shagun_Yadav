@@ -3,8 +3,7 @@ import { catchError, throwError } from 'rxjs';
 import { toAppHttpError } from './http-error';
 
 /**
- * Registered BETWEEN MsalInterceptor (currently a no-op - see README "Entra
- * ID app auth (feature-flagged, off by default)") and retryInterceptor (see
+ * Registered BETWEEN authInterceptor and retryInterceptor (see
  * app.config.ts) so it only sees a response once retryInterceptor has
  * exhausted its attempts - it maps the terminal HttpErrorResponse into the
  * typed AppHttpError every consumer of QuotesService actually works with,

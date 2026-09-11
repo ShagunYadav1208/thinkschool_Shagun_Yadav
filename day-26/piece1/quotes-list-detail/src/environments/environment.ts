@@ -8,13 +8,12 @@ export const environment = {
   // base URLs as `${apiOrigin}/api/...`, and an empty origin plus a
   // leading slash is still routed through the same dev-server proxy above.
   apiOrigin: '',
-  // Day 25: real Entra ID (Azure AD) sign-in, feature-flagged off for now -
-  // see README "Entra ID app auth (feature-flagged, off by default)".
-  // clientId/tenantId/apiScope are public identifiers, not secrets - safe to
-  // commit even while disabled (see README "Why these IDs are safe to
-  // commit"). Flip `authEnabled` to true (and QuotesApi's appsettings.json
-  // Auth:Enabled) once this student's Azure subscription is reactivated.
-  authEnabled: false,
+  // Day 25: real Entra ID (Azure AD) sign-in - now enabled, matching
+  // day-25/piece1's current state after that piece's login flow was fully
+  // debugged and confirmed working end to end. clientId/tenantId/apiScope
+  // are public identifiers, not secrets - safe to commit (see README "Why
+  // these IDs are safe to commit").
+  authEnabled: true,
   msal: {
     clientId: '335b9c06-58f9-4bc3-8732-b3f16bcf39e6',
     authority: 'https://login.microsoftonline.com/8d46a076-d093-416d-a57b-8692cde13bf8',

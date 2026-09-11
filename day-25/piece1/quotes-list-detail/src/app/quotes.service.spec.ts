@@ -26,9 +26,12 @@ import { AppHttpError } from './core/http-error';
  *   curl "http://localhost:5310/api/quotes?page=1&size=500"
  *   -> 400 {"errors":{"size":["Size must be between 1 and 100."]}, ...}
  *
- * Also exercises the interceptor pipeline wired in app.config.ts: auth
- * header, retry-with-backoff on idempotent GETs (5xx/network only, never
- * 4xx, never non-GET), and ProblemDetails -> AppHttpError mapping.
+ * Also exercises the interceptor pipeline wired in app.config.ts:
+ * retry-with-backoff on idempotent GETs (5xx/network only, never 4xx, never
+ * non-GET), and ProblemDetails -> AppHttpError mapping. Token attachment is
+ * MsalInterceptor's job (DI-based, HTTP_INTERCEPTORS, app.config.ts) - it
+ * needs a real/mocked MSAL instance to do anything, so it's exercised at a
+ * different layer, not asserted here.
  */
 describe('QuotesService against the real Week-1 API contract', () => {
   let service: QuotesService;

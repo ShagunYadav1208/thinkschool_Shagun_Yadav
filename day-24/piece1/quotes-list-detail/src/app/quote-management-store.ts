@@ -82,6 +82,23 @@ export class QuoteManagementStore {
     this.fetch$.next(page);
   }
 
+  /**
+   * Re-fetches the current page in place, without resetting to page 1. A
+   * quote created elsewhere (the Explore tab's create form) has no other way
+   * to reach this store - QuotesStore and QuoteManagementStore are two
+   * independent stores, each with its own copy of the list fetched once on
+   * `start()`. Before this, a newly-created quote only ever showed up here
+   * after a full page reload re-ran `start()` from scratch - confirmed live,
+   * not guessed. Safe to call even if `start()` was never called (e.g. the
+   * user creates a quote before ever opening the Manage tab): `fetch$` has no
+   * subscriber yet in that case, so `next()` is a harmless no-op, and
+   * `start()`'s own `goToPage(1)` picks up the fresh data whenever the tab is
+   * first opened.
+   */
+  refresh(): void {
+    this.fetch$.next(this.page());
+  }
+
   next(): void {
     if (this.hasNext()) this.goToPage(this.page() + 1);
   }

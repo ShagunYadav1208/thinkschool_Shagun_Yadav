@@ -3,16 +3,14 @@ import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { EventType, type AccountInfo, type EventMessage } from '@azure/msal-browser';
 import { filter } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { suppressNextRedirectNavigation } from '../app.config';
 
 /**
- * Day 25: real Entra ID sign-in, feature-flagged off for now (see
- * environment.ts's `authEnabled`) - this service, MsalGuard, and
- * MsalInterceptor are all still fully wired (see app.config.ts), just inert
- * while disabled: MsalGuard isn't applied to any route (quotes.routes.ts)
- * and MsalInterceptor's protectedResourceMap is empty (app.config.ts), so
- * nothing ever triggers an interactive login. login()/logout() here are
- * real MSAL calls, only reachable once the login route/button exist again
- * (gated the same way).
+ * Day 25: real Entra ID sign-in. login()/logout() are real MSAL redirect
+ * calls - see app.html for the login wall that's the only place login() gets
+ * called from, and quotes.routes.ts's authGuard for why the '/quotes/:id'
+ * route also checks isAuthenticated() (belt-and-suspenders once the app
+ * itself is already gated - see that guard's own header comment).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -31,19 +29,38 @@ export class AuthService {
   // login - see app.ts for why that distinction matters.
   readonly justSignedIn = signal(false);
 
+  // Set only when handleRedirectObservable's Observable actually ERRORS -
+  // e.g. Entra ID sending back an error instead of a token (AADSTS code +
+  // description in `errorMessage`), never just "not signed in yet". Before
+  // this existed, an error here had NO subscribe() error handler at all, so
+  // RxJS just let it vanish - the user got silently bounced back to the
+  // login screen with zero feedback, indistinguishable from having never
+  // clicked anything (confirmed live in day-25: AADSTS650052, a missing
+  // Service Principal for the API app registration, was silently swallowed
+  // until this was added). Read by login-route.html to actually show what
+  // went wrong instead of guessing.
+  readonly redirectError = signal<string | null>(null);
+
   constructor() {
-    // Harmless while authEnabled is false: nothing ever calls loginRedirect(),
-    // so there's no pending redirect response for this to find - `result` is
-    // just null every time, same as any other normal page load. Kept
-    // unconditional (not gated on authEnabled) so it's already correct and
-    // in place for the moment authEnabled flips to true - one less thing to
-    // remember to re-wire then.
-    this.msal.handleRedirectObservable().subscribe((result) => {
-      if (result?.account) {
-        this.msal.instance.setActiveAccount(result.account);
-        this.account.set(result.account);
-        this.justSignedIn.set(true);
-      }
+    // Unconditional (not gated on authEnabled) so it's already correct and in
+    // place for the moment authEnabled flips to true - one less thing to
+    // remember to re-wire then. Harmless while disabled: nothing ever calls
+    // loginRedirect(), so there's no pending redirect response for this to
+    // find - `result` is just null every time, same as any other page load.
+    this.msal.handleRedirectObservable().subscribe({
+      next: (result) => {
+        if (result?.account) {
+          this.msal.instance.setActiveAccount(result.account);
+          this.account.set(result.account);
+          this.justSignedIn.set(true);
+          this.redirectError.set(null);
+        }
+      },
+      error: (err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('MSAL redirect error:', err);
+        this.redirectError.set(message);
+      },
     });
 
     // msal-browser does not automatically set the "active" account after a
@@ -75,6 +92,24 @@ export class AuthService {
   }
 
   logout(): void {
-    this.msal.logoutRedirect().subscribe();
+    // In this msal-browser version, `onRedirectNavigate` for a LOGOUT is
+    // only read from the PublicClientApplication's own config
+    // (auth.onRedirectNavigate in app.config.ts), not from a per-call
+    // option on logoutRedirect() itself (confirmed by reading
+    // RedirectClient's actual source - the EndSessionRequest type doesn't
+    // even have this property). That config callback is shared with LOGIN
+    // redirects too, so suppressNextRedirectNavigation() arms it for
+    // exactly one call - this one - rather than permanently disabling
+    // navigation, which would silently break login.
+    //
+    // Why this matters: a plain logoutRedirect() navigates the browser to
+    // Entra ID's end_session_endpoint, which clears the user's Microsoft
+    // SSO session everywhere (every other tab/site signed in with the same
+    // account), not just this app - reported live in day-25 as an actual
+    // surprise, not a guess. MSAL still does its own local cleanup (this
+    // app's cached account/tokens) regardless; only the federated/
+    // browser-wide half is what suppressing navigation skips.
+    suppressNextRedirectNavigation();
+    this.msal.logoutRedirect().subscribe(() => this.account.set(null));
   }
 }

@@ -1,3 +1,22 @@
+@if (authEnabled && !authService.isAuthenticated()) {
+  <!--
+    Whole-app login wall: no tab below - Explore included - ever mounts
+    until this is gone, which is also what keeps app.ts's `store.start()`
+    (and every other tab's own store) from firing an API call before the
+    user has signed in. Without this, the Explore tab's own data fetch fired
+    immediately on boot, MsalInterceptor caught it with no account present,
+    and forced a silent full-page redirect straight to Microsoft on every
+    page load - before the user ever saw a login button.
+  -->
+  <section class="login-card">
+    <h2>Log in</h2>
+    <p>Sign in with your Microsoft account to use this app.</p>
+    @if (authService.redirectError(); as error) {
+      <p class="login-error">Sign-in failed: {{ error }}</p>
+    }
+    <button type="button" (click)="authService.login()">Log in with Microsoft</button>
+  </section>
+} @else {
 <header class="header-bar">
   <div class="header-inner">
     <span class="brand">Quotes</span>
@@ -171,3 +190,4 @@
     }
   }
 </main>
+}

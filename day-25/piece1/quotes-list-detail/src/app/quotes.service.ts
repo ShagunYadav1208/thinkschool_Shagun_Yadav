@@ -17,9 +17,8 @@ export class QuotesService {
    * GET /api/quotes/?page={page}&size={size} - the paginated list. `page`
    * must be >= 1 and `size` in [1, 100] or the real API returns a 400
    * ValidationProblemDetails (`errors: { page?: string[], size?: string[] }`)
-   * - confirmed live via curl, not guessed. Goes through MsalInterceptor
-   * (currently a no-op), errorMappingInterceptor, and retryInterceptor
-   * (app.config.ts); a 4xx
+   * - confirmed live via curl, not guessed. Goes through authInterceptor,
+   * errorMappingInterceptor, and retryInterceptor (app.config.ts); a 4xx
    * here surfaces as a rejected AppHttpError, not a raw HttpErrorResponse.
    */
   getQuotesPage(page: number, size: number): Observable<Quote[]> {

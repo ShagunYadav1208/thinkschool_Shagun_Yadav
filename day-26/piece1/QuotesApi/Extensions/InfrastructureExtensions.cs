@@ -178,7 +178,20 @@ public static class InfrastructureExtensions
         {
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = redisConnectionString;
+                // StackExchange.Redis's own default ConnectTimeout/SyncTimeout is 5000ms - when
+                // Redis is unreachable (confirmed live in day-25: no Redis listening on
+                // localhost:6379 locally), EVERY cache-touching request - GET /api/quotes/{id},
+                // DELETE - ate that full 5s before HybridCache's L2 call gave up, which read as
+                // "so slow" in real testing. Cutting these down means a broken/unreachable Redis
+                // fails in ~300ms instead, everywhere this app runs (also covers a deployed
+                // environment's placeholder secret value, which isn't a real, reachable Redis
+                // either - see keyvault.bicep's own comment on that value).
+                var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+                redisOptions.AbortOnConnectFail = false;
+                redisOptions.ConnectTimeout = 300;
+                redisOptions.SyncTimeout = 300;
+                redisOptions.AsyncTimeout = 300;
+                options.ConfigurationOptions = redisOptions;
                 options.InstanceName = "quotes:";
             });
         }

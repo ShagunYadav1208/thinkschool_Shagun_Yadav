@@ -138,4 +138,17 @@ export class QuotesStore {
   onQuoteCreated(quote: Quote): void {
     this.quotes.update((current) => [quote, ...current]);
   }
+
+  /**
+   * Same reasoning as onQuoteCreated, the other direction: a delete only
+   * ever happens from the Manage tab (QuoteManagementStore), which has no
+   * other way to reach this store's own copy of the list - Explore/All
+   * Quotes/Routing all read from `quotes`/`filteredQuotes` here, not from
+   * QuoteManagementStore. Without this, a deleted quote kept showing in
+   * every other tab until the next 8s poll tick (or a full reload) caught
+   * up - confirmed live in day-25, not guessed.
+   */
+  onQuoteDeleted(id: number): void {
+    this.quotes.update((current) => current.filter((q) => q.id !== id));
+  }
 }

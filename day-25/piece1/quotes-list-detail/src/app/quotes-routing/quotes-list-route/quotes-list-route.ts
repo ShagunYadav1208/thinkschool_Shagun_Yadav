@@ -5,9 +5,10 @@ import { Quote } from '../../models/quote.model';
 import { AppHttpError } from '../../core/http-error';
 
 /**
- * Lazy-loaded via `quotesRoutes` - its own chunk, fetched only when this
- * route is first navigated to. Open access - `quotes/:id`'s `MsalGuard` is
- * feature-flagged off for now (see quotes.routes.ts).
+ * The public half of the guarded pair: anyone can browse the list, but
+ * `authGuard` on `quotes/:id` requires being "logged in" to open one card's
+ * detail. Lazy-loaded via `quotesRoutes` - its own chunk, fetched only when
+ * this route is first navigated to.
  */
 @Component({
   selector: 'app-quotes-list-route',

@@ -3,15 +3,15 @@
     <h2>Signed in</h2>
     <p>
       Signed in as <code>{{ authService.accountName() }}</code> via Entra ID. <code>quotes/:id</code> is unlocked -
-      <code>MsalGuard</code> lets you through with a real, silently-acquired access token attached by
-      <code>MsalInterceptor</code> to every API call.
+      <code>authGuard</code> lets you through, and <code>MsalInterceptor</code> attaches a real, silently-acquired
+      access token to every API call.
     </p>
     <button type="button" (click)="logOut()">Log out</button>
   } @else {
     <h2>Log in</h2>
     <p>
-      <code>quotes/:id</code> is guarded - you were redirected here because <code>MsalGuard</code> found no signed-in
-      Entra ID account. Logging in redirects to a real Microsoft sign-in page, not a local flag.
+      <code>quotes/:id</code> is guarded - you were redirected here because <code>authGuard</code> found no
+      signed-in Entra ID account. Logging in redirects to a real Microsoft sign-in page, not a local flag.
     </p>
     <button type="button" (click)="logIn()">Log in with Microsoft</button>
   }

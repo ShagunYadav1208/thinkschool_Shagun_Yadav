@@ -1,4 +1,11 @@
-import { ApplicationConfig, importProvidersFrom, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
+import {
+  ApplicationConfig,
+  importProvidersFrom,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners,
+  provideZonelessChangeDetection,
+} from '@angular/core';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptors, withInterceptorsFromDi } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { InteractionType, PublicClientApplication } from '@azure/msal-browser';
@@ -41,12 +48,35 @@ import { quotesRoutes } from './quotes-routing/quotes.routes';
 // browser tab throughout, zero console errors, an infinite login loop -
 // exactly what two disjoint PublicClientApplication instances produces.
 let msalInstanceSingleton: PublicClientApplication | undefined;
+
+// Armed for exactly one redirect by AuthService.logout() (via
+// suppressNextRedirectNavigation() below), then immediately disarmed the
+// instant onRedirectNavigate below actually consults it - so it only ever
+// affects the ONE logoutRedirect() call that armed it, never a later
+// loginRedirect(). Needed because msal-browser reads onRedirectNavigate for
+// BOTH login and logout from this same PublicClientApplication config
+// (confirmed by reading RedirectClient's source - EndSessionRequest has no
+// per-call equivalent in this version) - a permanently-false callback here
+// would silently stop login from ever reaching Microsoft too.
+let allowNextRedirectNavigation = true;
+export function suppressNextRedirectNavigation(): void {
+  allowNextRedirectNavigation = false;
+}
+
 function msalInstanceFactory(): PublicClientApplication {
   msalInstanceSingleton ??= new PublicClientApplication({
     auth: {
       clientId: environment.msal.clientId,
       authority: environment.msal.authority,
       redirectUri: environment.msal.redirectUri,
+      // See AuthService.logout() - a local-only sign-out (not a full
+      // Microsoft SSO logout affecting every other tab/site) depends on
+      // this returning false for exactly the one redirect that armed it.
+      onRedirectNavigate: () => {
+        const allow = allowNextRedirectNavigation;
+        allowNextRedirectNavigation = true;
+        return allow;
+      },
     },
     cache: {
       cacheLocation: 'localStorage',
@@ -97,6 +127,16 @@ export const appConfig: ApplicationConfig = {
     { provide: MSAL_INSTANCE, useFactory: msalInstanceFactory },
     { provide: MSAL_GUARD_CONFIG, useFactory: msalGuardConfigFactory },
     { provide: MSAL_INTERCEPTOR_CONFIG, useFactory: msalInterceptorConfigFactory },
+    // msal-browser 3.x+ (this app is on 5.x) requires an explicit async
+    // initialize() before ANY other PublicClientApplication API is called -
+    // calling loginRedirect()/handleRedirectObservable() etc. beforehand
+    // throws BrowserAuthError: uninitialized_public_client_application.
+    // Confirmed live: real sign-in got all the way through Entra ID's
+    // consent screen and back, then failed here because nothing had ever
+    // awaited this. provideAppInitializer blocks bootstrap until it
+    // resolves, so by the time AuthService's constructor runs (and calls
+    // handleRedirectObservable()), the instance is guaranteed ready.
+    provideAppInitializer(() => inject(MSAL_INSTANCE).initialize()),
     // MsalInterceptor is DI-based (HTTP_INTERCEPTORS), not the functional
     // `withInterceptors` style the other two use - withInterceptorsFromDi()
     // is what makes provideHttpClient still pick it up. It attaches a real,

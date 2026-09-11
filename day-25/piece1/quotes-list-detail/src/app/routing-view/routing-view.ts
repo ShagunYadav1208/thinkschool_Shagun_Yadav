@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
-import { environment } from '../../environments/environment';
 
 /**
  * Hosts the lazy-loaded quotes/login/detail routes. The router-outlet only
@@ -17,7 +16,6 @@ import { environment } from '../../environments/environment';
 })
 export class RoutingView {
   protected readonly authService = inject(AuthService);
-  protected readonly authEnabled = environment.authEnabled;
 
   protected logOut(): void {
     this.authService.logout();

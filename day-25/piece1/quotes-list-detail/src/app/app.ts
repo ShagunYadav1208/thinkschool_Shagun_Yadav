@@ -1,5 +1,6 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { AuthService } from './core/auth.service';
+import { environment } from '../environments/environment';
 import { CreateQuoteForm } from './create-quote-form/create-quote-form';
 import { CreateQuoteFormSignal } from './create-quote-form-signal/create-quote-form-signal';
 import { ExploreView } from './explore-view/explore-view';
@@ -13,6 +14,7 @@ import { OutboxView } from './outbox-view/outbox-view';
 import { CacheView } from './cache-view/cache-view';
 import { ResilienceView } from './resilience-view/resilience-view';
 import { QuotesStore } from './quotes-store';
+import { QuoteManagementStore } from './quote-management-store';
 import { Quote } from './models/quote.model';
 
 type Tab =
@@ -50,25 +52,15 @@ type Tab =
 })
 export class App {
   protected readonly store = inject(QuotesStore);
-
-  // Injected here (root component, always constructed first, regardless of
-  // activeTab's initial value) purely so AuthService's constructor - and
-  // therefore its one call to handleRedirectObservable() - runs
-  // unconditionally on every page load. Harmless while authEnabled is
-  // false (nothing ever starts a redirect, so there's nothing for it to
-  // find), but a real bug this fixed once auth was actually enabled:
-  // AuthService was only ever injected by RoutingView/LoginRoute, both of
-  // which live inside the 'routing' tab; a loginRedirect() always lands
-  // back on bare `redirectUri` ('/'), which activeTab's own logic below
-  // resolves to the 'explore' tab, not 'routing' - so AuthService was never
-  // constructed on that page load, handleRedirectObservable() never ran, no
-  // account was ever set, and clicking back into a guarded route just
-  // started ANOTHER loginRedirect() - an infinite "keeps asking to log in"
-  // loop with no error, confirmed live in the browser before this fix.
+  private readonly quoteManagementStore = inject(QuoteManagementStore);
   protected readonly authService = inject(AuthService);
 
+  // Read once - reflects app.html's login wall, which hides every tab
+  // (Explore included) until this is either false or the user is signed in.
+  protected readonly authEnabled = environment.authEnabled;
+
   // Defaults to 'explore', EXCEPT a direct/reloaded deep link into the
-  // router's own URLs (/quotes, /quotes/:id, /login) - without this, the
+  // router's own URLs (/login, /quotes, /quotes/:id) - without this, the
   // router-outlet (which lives inside the 'routing' tab) wouldn't be in the
   // DOM yet on a fresh load, so a reload on /quotes/17 would silently show
   // the Explore tab instead of the quote the URL points at.
@@ -81,23 +73,36 @@ export class App {
   // with Playwright before switching to `location.pathname`, which reflects
   // the real browser URL immediately.
   protected readonly activeTab = signal<Tab>(
-    location.pathname.startsWith('/quotes') || location.pathname.startsWith('/login') ? 'routing' : 'explore',
+    location.pathname.startsWith('/quotes') || location.pathname.startsWith('/login') ? 'routing' : 'explore'
   );
 
   constructor() {
-    this.store.start();
+    // Gated on sign-in (when authEnabled): app.html doesn't render any tab -
+    // Explore included - until the user is signed in, but that alone
+    // wouldn't stop THIS call, since it runs here in the root constructor
+    // regardless of what the template shows. Without this guard, `start()`
+    // fired its `/api/quotes` request immediately on boot, before the user
+    // ever saw a login screen - MsalInterceptor caught that request, found
+    // no account, and forced an interactive redirect to Microsoft itself, on
+    // every single page load. `start()` is idempotent (quotes-store.ts), so
+    // it's safe to let this effect re-run past its first true.
+    effect(() => {
+      if (!this.authEnabled || this.authService.isAuthenticated()) {
+        this.store.start();
+      }
+    });
 
-    // A loginRedirect() started from the 'routing' tab always lands back on
-    // bare `redirectUri`, which the signal above resolves to 'explore' (no
+    // A loginRedirect() started while on the 'routing' tab always lands back
+    // on bare `redirectUri`, which the signal above resolves to 'explore' (no
     // `/quotes`/`/login` path survives the round trip to Entra ID and back) -
     // without this, a successful sign-in would silently strand the user on
     // Explore instead of returning them to where they were. Reads
     // `justSignedIn`, NOT `isAuthenticated` - the latter is also true on a
     // plain reload with an already-active session from before, which would
-    // yank the user back to 'routing' every time they reload on Explore,
-    // not just right after an actual login. A no-op while authEnabled is
-    // false: justSignedIn can only become true via a real redirect
-    // completing, which nothing triggers yet.
+    // yank the user back to 'routing' every time they reload on Explore, not
+    // just right after an actual login. A no-op while authEnabled is false:
+    // justSignedIn can only become true via a real redirect completing,
+    // which nothing triggers yet.
     effect(() => {
       if (this.authService.justSignedIn()) {
         this.activeTab.set('routing');
@@ -111,6 +116,11 @@ export class App {
 
   protected onQuoteCreated(quote: Quote): void {
     this.store.onQuoteCreated(quote);
+    // QuoteManagementStore (the 'manage' tab) keeps its own independent copy
+    // of the list, fetched once on start() - it has no other way to learn
+    // about a quote created from here, so without this it stayed stale until
+    // a full page reload. See QuoteManagementStore.refresh()'s own comment.
+    this.quoteManagementStore.refresh();
     this.activeTab.set('explore');
   }
 }

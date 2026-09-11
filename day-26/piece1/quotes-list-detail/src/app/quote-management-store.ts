@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { catchError, map, of, Subject, switchMap } from 'rxjs';
 import { QuotesService } from './quotes.service';
+import { QuotesStore } from './quotes-store';
 import { Quote } from './models/quote.model';
 import { AppHttpError } from './core/http-error';
 
@@ -18,6 +19,7 @@ const PAGE_SIZE = 5;
 @Injectable({ providedIn: 'root' })
 export class QuoteManagementStore {
   private readonly quotesService = inject(QuotesService);
+  private readonly quotesStore = inject(QuotesStore);
   private started = false;
 
   readonly page = signal(1);
@@ -82,6 +84,22 @@ export class QuoteManagementStore {
     this.fetch$.next(page);
   }
 
+  /**
+   * Re-fetches the current page in place, without resetting to page 1. A
+   * quote created elsewhere (the Explore tab's create form) has no other way
+   * to reach this store - QuotesStore and QuoteManagementStore are two
+   * independent stores, each with its own copy of the list fetched once on
+   * `start()`. Before this, a newly-created quote only ever showed up here
+   * after a full page reload re-ran `start()` from scratch. Safe to call
+   * even if `start()` was never called (e.g. the user creates a quote before
+   * ever opening the Manage tab): `fetch$` has no subscriber yet in that
+   * case, so `next()` is a harmless no-op, and `start()`'s own
+   * `goToPage(1)` picks up the fresh data whenever the tab is first opened.
+   */
+  refresh(): void {
+    this.fetch$.next(this.page());
+  }
+
   next(): void {
     if (this.hasNext()) this.goToPage(this.page() + 1);
   }
@@ -111,8 +129,25 @@ export class QuoteManagementStore {
     });
 
     if (alreadyGone) {
-      this.quotes.update((current) => current.filter((q) => q.id !== id));
-      if (this.quotes().length === 0) this.status.set('empty');
+      // Other tabs (Explore/All Quotes) have no other way to learn a quote
+      // deleted here is gone - see QuotesStore.onQuoteDeleted's own comment.
+      this.quotesStore.onQuoteDeleted(id);
+
+      // Re-fetch the real page from the server instead of splicing `quotes`
+      // locally. Splicing was a real bug caught in day-25: `hasNext` is
+      // `quotes().length === PAGE_SIZE`, so removing one item locally made
+      // a genuinely-full page look short, permanently disabling Next even
+      // though a real next page still existed - and the item that should
+      // have shifted up from that next page never appeared, since nothing
+      // was ever fetched to bring it in. If this was the LAST item on a
+      // page beyond the first, that page is now genuinely empty server-side
+      // - go back one page instead of showing an empty page with dead
+      // navigation.
+      if (this.quotes().length === 1 && this.page() > 1) {
+        this.goToPage(this.page() - 1);
+      } else {
+        this.refresh();
+      }
       return;
     }
 

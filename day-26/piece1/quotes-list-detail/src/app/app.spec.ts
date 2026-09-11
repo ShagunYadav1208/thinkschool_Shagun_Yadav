@@ -16,6 +16,10 @@ class AuthServiceStub {
   readonly isAuthenticated = signal(false);
   readonly justSignedIn = signal(false);
   readonly accountName = signal<string | null>(null);
+  // authEnabled is now true (matching day-25's current state), so app.html's
+  // login wall actually renders in this test - it reads redirectError()
+  // unconditionally, so the stub needs it too or the template throws.
+  readonly redirectError = signal<string | null>(null);
   login(): void {}
   logout(): void {}
 }

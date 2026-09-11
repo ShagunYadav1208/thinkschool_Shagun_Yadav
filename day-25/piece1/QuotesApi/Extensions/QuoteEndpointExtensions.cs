@@ -165,8 +165,19 @@ public static class QuoteEndpointExtensions
                 return Results.NotFound();
 
             // Without this, a quote fetched (and cached) before its delete would keep serving
-            // from cache for up to the entry's remaining TTL after it's gone from the DB.
-            await cache.RemoveAsync(QuoteCacheKeys.ById(id), cancellationToken);
+            // from cache for up to the entry's remaining TTL after it's gone from the DB. Wrapped:
+            // the DB delete above already committed - a cache-layer hiccup (confirmed live: Redis
+            // unreachable locally throws RedisConnectionException here) shouldn't turn an already-
+            // successful delete into a failed request. Worst case without this eviction, the stale
+            // entry just serves until its existing TTL (30s) expires on its own.
+            try
+            {
+                await cache.RemoveAsync(QuoteCacheKeys.ById(id), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Cache eviction failed for quote {QuoteId} after a successful delete.", id);
+            }
 
             logger.LogInformation(
                 "Deleted quote {QuoteId}",

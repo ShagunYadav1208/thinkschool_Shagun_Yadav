@@ -123,7 +123,17 @@ describe('QuoteManagementStore against the real Week-1 API contract', () => {
     expect(store.page()).toBe(2);
   });
 
-  it('deleting a quote removes it from the current page without a refetch', () => {
+  /**
+   * THE BUG this replaced: a successful delete used to splice the deleted
+   * item out of the local `quotes` array in place, with no refetch at all.
+   * That broke pagination for real - `hasNext` is `quotes().length ===
+   * PAGE_SIZE`, so removing one item locally made a genuinely-full page
+   * look short, permanently disabling Next even though a real next page
+   * still existed, and nothing ever shifted up from that next page to fill
+   * the gap. Confirmed live in day-25, not guessed. Re-fetching the real
+   * page from the server is what actually keeps pagination correct.
+   */
+  it('deleting a quote re-fetches the current page from the server (not a local splice)', () => {
     store.start();
     expectPageRequest(1).flush(PAGE_1);
 
@@ -132,8 +142,42 @@ describe('QuoteManagementStore against the real Week-1 API contract', () => {
     expect(deleteReq.request.method).toBe('DELETE');
     deleteReq.flush(null, { status: 204, statusText: 'No Content' });
 
-    expect(store.quotes().map((q) => q.id)).toEqual([18, 19, 22, 26]);
+    // The real API shifts a quote up from beyond this page once the deleted
+    // one is gone - id 31 standing in for whatever that next real quote is.
+    expectPageRequest(1).flush([
+      { id: 18, author: 'Grace Hopper', text: 'The most dangerous phrase in the language is: we have always done it this way.' },
+      { id: 19, author: 'Grace Hopper', text: 'A ship in port is safe, but that is not what ships are built for.' },
+      { id: 22, author: 'Sumit Sharma', text: 'Har Burai mein se ek achchai zarur nikalti hai' },
+      { id: 26, author: 'Mark Twain', text: "If you tell the truth, you don't have to remember anything." },
+      { id: 31, author: 'Author 31', text: 'Quote 31' },
+    ]);
+
+    expect(store.quotes().map((q) => q.id)).toEqual([18, 19, 22, 26, 31]);
     expect(store.status()).toBe('loaded');
+    // A genuinely full page again - Next must be live, not stuck disabled.
+    expect(store.hasNext()).toBe(true);
+  });
+
+  /**
+   * The other edge the refetch fix has to get right: deleting the LAST item
+   * on a page beyond the first must not strand the user on a now-empty page
+   * with both Next and Previous effectively dead - it should land them back
+   * on the page that still has data.
+   */
+  it('deleting the only item on a page beyond the first goes back a page instead of showing empty', () => {
+    store.start();
+    expectPageRequest(1).flush(PAGE_1);
+
+    store.goToPage(2);
+    expectPageRequest(2).flush([{ id: 31, author: 'Author 31', text: 'Quote 31' }]);
+
+    store.deleteQuote(31);
+    httpMock.expectOne(`${endpoint}31`).flush(null, { status: 204, statusText: 'No Content' });
+
+    // No refetch of the now-nonexistent page 2 - straight to page 1.
+    expect(store.page()).toBe(1);
+    expectPageRequest(1).flush(PAGE_1);
+    expect(store.quotes()).toEqual(PAGE_1);
   });
 
   /**
@@ -155,6 +199,12 @@ describe('QuoteManagementStore against the real Week-1 API contract', () => {
     expect(deleteReqs.length).toBe(1);
 
     deleteReqs[0].flush(null, { status: 204, statusText: 'No Content' });
+    expectPageRequest(1).flush([
+      { id: 18, author: 'Grace Hopper', text: 'The most dangerous phrase in the language is: we have always done it this way.' },
+      { id: 19, author: 'Grace Hopper', text: 'A ship in port is safe, but that is not what ships are built for.' },
+      { id: 22, author: 'Sumit Sharma', text: 'Har Burai mein se ek achchai zarur nikalti hai' },
+      { id: 26, author: 'Mark Twain', text: "If you tell the truth, you don't have to remember anything." },
+    ]);
 
     expect(store.quotes().map((q) => q.id)).toEqual([18, 19, 22, 26]);
     expect(store.deletingIds().has(17)).toBe(false);
@@ -176,6 +226,12 @@ describe('QuoteManagementStore against the real Week-1 API contract', () => {
     store.deleteQuote(17);
     const deleteReq = httpMock.expectOne(`${endpoint}17`);
     deleteReq.flush('', { status: 404, statusText: 'Not Found' });
+    expectPageRequest(1).flush([
+      { id: 18, author: 'Grace Hopper', text: 'The most dangerous phrase in the language is: we have always done it this way.' },
+      { id: 19, author: 'Grace Hopper', text: 'A ship in port is safe, but that is not what ships are built for.' },
+      { id: 22, author: 'Sumit Sharma', text: 'Har Burai mein se ek achchai zarur nikalti hai' },
+      { id: 26, author: 'Mark Twain', text: "If you tell the truth, you don't have to remember anything." },
+    ]);
 
     expect(store.quotes().map((q) => q.id)).toEqual([18, 19, 22, 26]);
     expect(store.status()).not.toBe('error');

@@ -20,9 +20,15 @@ export const environment = {
   // Same app registration as environment.ts, different redirectUri - Entra ID
   // validates the redirect URI against the exact list registered on the SPA
   // app (see README "MI wiring + Entra ID app registrations"), so production
-  // needed its own entry added there, not just a different value here. Also
-  // off for now - flip alongside environment.ts's authEnabled.
-  authEnabled: false,
+  // needs its own entry added there, not just a different value here.
+  // authEnabled flipped to true to match day-25/piece1's current state, but
+  // this piece has never actually been deployed (subscription blocker - see
+  // README "Current status") - `redirectUri` below is still whatever URL an
+  // earlier exercise last registered, not one that's been verified for
+  // THIS piece's own deployment. Update it to the real hosting URL (and
+  // register that URL on the SPA app registration) before this build is
+  // actually used anywhere.
+  authEnabled: true,
   msal: {
     clientId: '335b9c06-58f9-4bc3-8732-b3f16bcf39e6',
     authority: 'https://login.microsoftonline.com/8d46a076-d093-416d-a57b-8692cde13bf8',

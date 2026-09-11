@@ -201,6 +201,41 @@ module api 'modules/api.bicep' = {
         name: 'AppInsights__ConnectionString'
         value: appInsights.outputs.connectionString
       }
+      {
+        // Built from THIS deployment's own sql module output, not hardcoded
+        // anywhere in source - appsettings.Production.json deliberately has
+        // no ConnectionStrings section any more (see its own header comment)
+        // specifically so it can never again point at a stale server name
+        // from a different day's exercise (day-25's own fix for the exact
+        // same bug). No password: "Authentication=Active Directory Managed
+        // Identity" is the entire auth story.
+        name: 'ConnectionStrings__DefaultConnection'
+        value: 'Server=tcp:${sql.outputs.fullyQualifiedDomainName},1433;Database=${sqlDatabaseName};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+      }
+      {
+        // Same reasoning as the connection string above - built from this
+        // deployment's own serviceBusNamespaceName PARAMETER (not the
+        // module's output - that would make `api` depend on `serviceBus`,
+        // which already depends on `api` for dataOwnerPrincipalId below, a
+        // circular module dependency Bicep rejects at compile time). A
+        // Service Bus namespace's fully-qualified DNS name is always
+        // exactly "<namespaceName>.servicebus.windows.net", so the
+        // parameter alone is enough - no output needed.
+        name: 'ServiceBus__FullyQualifiedNamespace'
+        value: '${serviceBusNamespaceName}.servicebus.windows.net'
+      }
+      {
+        name: 'ServiceBus__TopicName'
+        value: serviceBusTopicName
+      }
+      {
+        name: 'ServiceBus__AuditLogSubscription'
+        value: 'audit-log'
+      }
+      {
+        name: 'ServiceBus__NotificationsSubscription'
+        value: 'notifications'
+      }
     ]
   }
 }

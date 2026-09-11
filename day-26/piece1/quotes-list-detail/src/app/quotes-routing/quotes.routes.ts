@@ -1,15 +1,17 @@
 import { Routes } from '@angular/router';
-import { MsalGuard } from '@azure/msal-angular';
+import { authGuard } from '../core/auth.guard';
 import { environment } from '../../environments/environment';
 
 /**
  * Each `loadComponent` is its own build chunk, fetched only the first time
  * its route is actually navigated to - confirmed in the Network tab, not
- * just declared here. `quotes/:id` is the only guarded route, and ONLY
- * while `environment.authEnabled` is true (see README "Entra ID app auth
+ * just declared here. `quotes/:id` carries `authGuard` only while
+ * `environment.authEnabled` is true (see README "Entra ID app auth
  * (feature-flagged, off by default)") - while false, neither the `/login`
- * route nor `MsalGuard` are registered at all, so there's nothing in this
- * app that could ever trigger an Entra ID redirect.
+ * route nor `authGuard` are registered at all. When enabled, the real
+ * primary gate is app.html's whole-app login wall (nothing here renders
+ * until signed in); this route-level guard is belt-and-suspenders for a
+ * direct/reloaded deep link into `/quotes/:id`.
  */
 export const quotesRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'quotes' },
@@ -27,7 +29,7 @@ export const quotesRoutes: Routes = [
   },
   {
     path: 'quotes/:id',
-    canActivate: environment.authEnabled ? [MsalGuard] : [],
+    canActivate: environment.authEnabled ? [authGuard] : [],
     loadComponent: () => import('./quote-detail-route/quote-detail-route').then((m) => m.QuoteDetailRoute),
   },
 ];

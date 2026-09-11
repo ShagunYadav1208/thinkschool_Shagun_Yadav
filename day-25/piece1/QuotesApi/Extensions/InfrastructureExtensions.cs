@@ -24,14 +24,9 @@ namespace QuotesApi.Extensions;
 public static class InfrastructureExtensions
 {
     /// <summary>
-    /// Entra ID app auth, feature-flagged behind "Auth:Enabled" (default false - see
-    /// appsettings.json and README "Entra ID app auth (feature-flagged, off by default)").
-    /// The implementation is complete and real (same AddMicrosoftIdentityWebApi +
-    /// FallbackPolicy wiring day-25 originally shipped), it just isn't switched on: this
-    /// student's Azure subscription hit its spending limit mid-exercise, so login was
-    /// reverted to unblock local testing rather than leaving a half-broken auth flow live.
-    /// Program.cs reads this same helper to decide whether to call
-    /// UseAuthentication/UseAuthorization - keep both checks in sync.
+    /// Entra ID app auth, feature-flagged behind "Auth:Enabled" (see appsettings.json
+    /// and README "Entra ID app auth"). Both Program.cs (UseAuthentication/UseAuthorization)
+    /// and AddInfrastructure below read this same check - keep them in sync.
     /// </summary>
     public static bool IsAuthEnabled(IConfiguration configuration) =>
         configuration.GetValue<bool>("Auth:Enabled");
@@ -74,15 +69,11 @@ public static class InfrastructureExtensions
             });
         });
 
-        // Day 25: Entra ID app auth - see IsAuthEnabled's doc comment above for why this
-        // is gated. When enabled, AddMicrosoftIdentityWebApi validates incoming bearer
-        // tokens against the "AzureAd" section (Instance/TenantId/ClientId - all three are
-        // identifiers, not secrets, safe to commit; there is no client secret anywhere in
-        // this config because a "protected web API" only ever validates tokens someone
-        // else's identity provider issued, it never itself authenticates to Entra ID).
-        // FallbackPolicy makes every endpoint in this app require a valid token by
-        // default once enabled - a new endpoint added later is secure unless someone
-        // deliberately opts out with [AllowAnonymous], not the other way around.
+        // Day 25: real Entra ID (Azure AD) bearer-token auth, feature-flagged behind
+        // "Auth:Enabled" so every earlier day's unauthenticated curl-based testing keeps
+        // working unless this is explicitly turned on. FallbackPolicy requires an
+        // authenticated user on every endpoint by default - no per-endpoint [Authorize]
+        // attributes to remember to add or forget.
         if (IsAuthEnabled(configuration))
         {
             services
@@ -178,7 +169,20 @@ public static class InfrastructureExtensions
         {
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = redisConnectionString;
+                // StackExchange.Redis's own default ConnectTimeout/SyncTimeout is 5000ms - when
+                // Redis is unreachable (confirmed live: no Redis listening on localhost:6379
+                // locally), EVERY cache-touching request - GET /api/quotes/{id}, DELETE - ate that
+                // full 5s before HybridCache's L2 call gave up, which is exactly what read as "so
+                // slow" in the routing tab and delete button. Cutting these down means a broken/
+                // unreachable Redis fails in ~300ms instead, everywhere this app runs (also covers
+                // the deployed environment's placeholder secret value, which isn't a real,
+                // reachable Redis either - see keyvault.bicep's own comment on that value).
+                var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+                redisOptions.AbortOnConnectFail = false;
+                redisOptions.ConnectTimeout = 300;
+                redisOptions.SyncTimeout = 300;
+                redisOptions.AsyncTimeout = 300;
+                options.ConfigurationOptions = redisOptions;
                 options.InstanceName = "quotes:";
             });
         }
