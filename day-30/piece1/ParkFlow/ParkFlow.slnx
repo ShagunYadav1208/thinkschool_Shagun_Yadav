@@ -1,0 +1,29 @@
+<Solution>
+  <Project Path="src/ParkFlow.Api/ParkFlow.Api.csproj" />
+
+  <Project Path="src/BuildingBlocks/ParkFlow.BuildingBlocks.Domain/ParkFlow.BuildingBlocks.Domain.csproj" />
+  <Project Path="src/BuildingBlocks/ParkFlow.BuildingBlocks.Application/ParkFlow.BuildingBlocks.Application.csproj" />
+
+  <Project Path="src/Modules/Parking/ParkFlow.Modules.Parking.Domain/ParkFlow.Modules.Parking.Domain.csproj" />
+  <Project Path="src/Modules/Parking/ParkFlow.Modules.Parking.Application/ParkFlow.Modules.Parking.Application.csproj" />
+  <Project Path="src/Modules/Parking/ParkFlow.Modules.Parking.Infrastructure/ParkFlow.Modules.Parking.Infrastructure.csproj" />
+
+  <Project Path="src/Modules/Reservation/ParkFlow.Modules.Reservation.Domain/ParkFlow.Modules.Reservation.Domain.csproj" />
+  <Project Path="src/Modules/Reservation/ParkFlow.Modules.Reservation.Application/ParkFlow.Modules.Reservation.Application.csproj" />
+  <Project Path="src/Modules/Reservation/ParkFlow.Modules.Reservation.Infrastructure/ParkFlow.Modules.Reservation.Infrastructure.csproj" />
+
+  <Project Path="src/Modules/Vehicle/ParkFlow.Modules.Vehicle.Domain/ParkFlow.Modules.Vehicle.Domain.csproj" />
+  <Project Path="src/Modules/Vehicle/ParkFlow.Modules.Vehicle.Application/ParkFlow.Modules.Vehicle.Application.csproj" />
+  <Project Path="src/Modules/Vehicle/ParkFlow.Modules.Vehicle.Infrastructure/ParkFlow.Modules.Vehicle.Infrastructure.csproj" />
+
+  <Project Path="src/Modules/Payment/ParkFlow.Modules.Payment.Domain/ParkFlow.Modules.Payment.Domain.csproj" />
+  <Project Path="src/Modules/Payment/ParkFlow.Modules.Payment.Application/ParkFlow.Modules.Payment.Application.csproj" />
+  <Project Path="src/Modules/Payment/ParkFlow.Modules.Payment.Infrastructure/ParkFlow.Modules.Payment.Infrastructure.csproj" />
+
+  <Project Path="src/Modules/Notification/ParkFlow.Modules.Notification.Domain/ParkFlow.Modules.Notification.Domain.csproj" />
+  <Project Path="src/Modules/Notification/ParkFlow.Modules.Notification.Application/ParkFlow.Modules.Notification.Application.csproj" />
+  <Project Path="src/Modules/Notification/ParkFlow.Modules.Notification.Infrastructure/ParkFlow.Modules.Notification.Infrastructure.csproj" />
+
+  <Project Path="tests/ParkFlow.UnitTests/ParkFlow.UnitTests.csproj" />
+  <Project Path="tests/ParkFlow.IntegrationTests/ParkFlow.IntegrationTests.csproj" />
+</Solution>
