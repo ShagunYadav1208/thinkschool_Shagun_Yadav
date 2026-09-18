@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ParkFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ AUTH: login, then vehicle registration ============ -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark">🅿️</span> ParkFlow</div>
+
+      <ol class="auth-steps">
+        <li id="auth-step-indicator-1" class="auth-step-dot active">1</li>
+        <li class="auth-step-line"></li>
+        <li id="auth-step-indicator-2" class="auth-step-dot">2</li>
+      </ol>
+
+      <div id="auth-step-login" class="auth-step">
+        <h1>Log in</h1>
+        <p class="auth-sub">Pick a demo account to continue.</p>
+        <div class="field">
+          <label for="auth-user-select">Account</label>
+          <select id="auth-user-select">
+            <option value="userA">userA</option>
+            <option value="userB">userB</option>
+          </select>
+        </div>
+        <button id="auth-login-btn" type="button" class="accent auth-submit">Log in</button>
+      </div>
+
+      <div id="auth-step-vehicle" class="auth-step" hidden>
+        <h1>Register your vehicle</h1>
+        <p class="auth-sub">One vehicle per account, needed before you can book a spot.</p>
+        <div class="row">
+          <div class="field">
+            <label for="plate-input">Plate</label>
+            <input id="plate-input" maxlength="15" placeholder="DEMO-123" value="DEMO-123">
+          </div>
+          <div class="field">
+            <label for="vehicle-type-select">Type</label>
+            <select id="vehicle-type-select">
+              <option value="0">Car</option>
+              <option value="1">Motorcycle</option>
+              <option value="2">Truck</option>
+              <option value="3">Electric vehicle</option>
+            </select>
+          </div>
+        </div>
+        <button id="register-vehicle-btn" type="button" class="accent auth-submit">Continue</button>
+        <button id="auth-back-btn" type="button" class="link-btn auth-back">&larr; back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app-shell" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🅿️</span>
+        <div class="brand-text"><h1>ParkFlow</h1></div>
+      </div>
+      <div class="identity">
+        <div class="identity-who">
+          <span class="whoami-name" id="whoami-name">userA</span>
+          <span class="whoami-plate mono" id="whoami-plate"></span>
+        </div>
+        <button class="link-btn" id="logout-btn" type="button">Switch account</button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" id="tab-btn-book" role="tab" aria-selected="true" aria-controls="tab-book" type="button">
+        <span class="tab-icon">🅿️</span> Book a spot
+      </button>
+      <button class="tab-btn" id="tab-btn-reservations" role="tab" aria-selected="false" aria-controls="tab-reservations" type="button">
+        <span class="tab-icon">📋</span> My reservations
+        <span class="tab-badge" id="tab-badge-active" hidden>0</span>
+      </button>
+    </nav>
+
+    <main class="wrap">
+      <!-- ============ TAB: BOOK ============ -->
+      <section id="tab-book" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-book">
+        <div class="card map-card">
+          <div class="card-head">
+            <h2>Downtown Garage</h2>
+            <div class="legend">
+              <span class="legend-item"><i class="dot available"></i>Available</span>
+              <span class="legend-item"><i class="dot reserved"></i>Reserved</span>
+              <span class="legend-item"><i class="dot occupied"></i>Occupied</span>
+            </div>
+          </div>
+
+          <div class="map-toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input id="spot-search" type="search" placeholder="Search spot number or type…" aria-label="Search parking spots">
+            </div>
+            <div id="floor-tabs" class="floor-tabs"></div>
+          </div>
+
+          <div id="leaflet-map" class="leaflet-map"></div>
+        </div>
+
+        <div id="booking-form" class="booking-form-card">
+          <div class="row">
+            <div class="field">
+              <label for="start-input">Start</label>
+              <input id="start-input" type="datetime-local">
+            </div>
+            <div class="field">
+              <label for="end-input">End</label>
+              <input id="end-input" type="datetime-local">
+            </div>
+            <div class="price-preview">
+              <span class="rate">$5.00/hr &middot; spot <span id="booking-spot-label"></span></span>
+              <span id="price-preview-amount">$0.00</span>
+            </div>
+          </div>
+          <button id="confirm-booking-btn" type="button" class="accent">Book this spot</button>
+          <button id="cancel-booking-form-btn" type="button" class="secondary">Cancel</button>
+        </div>
+      </section>
+
+      <!-- ============ TAB: MY RESERVATIONS ============ -->
+      <section id="tab-reservations" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-reservations" hidden>
+        <div class="card">
+          <div class="totals">
+            <div class="stat"><span class="k">Active bookings</span><span class="v" id="stat-active">0</span></div>
+            <div class="stat"><span class="k">Completed trips</span><span class="v" id="stat-completed">0</span></div>
+            <div class="stat highlight"><span class="k">Total charged</span><span class="v" id="stat-total">$0.00</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Reservations</h2>
+          <div id="res-list" class="res-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

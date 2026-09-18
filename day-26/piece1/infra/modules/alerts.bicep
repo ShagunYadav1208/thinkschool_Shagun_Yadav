@@ -30,13 +30,12 @@ resource errorRateAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-previ
     criteria: {
       allOf: [
         {
-          query: '''
+          query: concat('''
 requests
 | where timestamp > ago(5m)
 | summarize total = count(), failed = countif(success == false)
 | extend errorRatePercent = round(100.0 * failed / total, 2)
-| where errorRatePercent > ${errorRateThreshold}
-'''
+| where errorRatePercent > ''', string(errorRateThreshold))
           timeAggregation: 'Count'
           operator: 'GreaterThan'
           threshold: 0
