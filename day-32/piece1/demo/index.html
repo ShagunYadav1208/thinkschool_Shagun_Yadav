@@ -1,0 +1,377 @@
+<title>ParkFlow Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #f0ede5;
+    --ink: #1c1b17;
+    --muted: #6c6759;
+    --line: #e3ddcf;
+    --accent: #d99a00;
+    --accent-ink: #4a3600;
+    --allow: #1f7a4d;
+    --allow-bg: #e7f4ec;
+    --deny: #b3261e;
+    --deny-bg: #fbeceb;
+    --neutral: #55524a;
+    --neutral-bg: #edeae1;
+    --shadow: 0 1px 2px rgba(28,27,23,0.06), 0 8px 20px -12px rgba(28,27,23,0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16150f;
+      --surface: #1e1c15;
+      --surface-2: #262319;
+      --ink: #f3f0e6;
+      --muted: #a9a294;
+      --line: #35311f;
+      --accent: #f2b705;
+      --accent-ink: #2a1f00;
+      --allow: #5fd996;
+      --allow-bg: #10301f;
+      --deny: #ff8b83;
+      --deny-bg: #3a1512;
+      --neutral: #c9c4b4;
+      --neutral-bg: #2a271c;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16150f;
+    --surface: #1e1c15;
+    --surface-2: #262319;
+    --ink: #f3f0e6;
+    --muted: #a9a294;
+    --line: #35311f;
+    --accent: #f2b705;
+    --accent-ink: #2a1f00;
+    --allow: #5fd996;
+    --allow-bg: #10301f;
+    --deny: #ff8b83;
+    --deny-bg: #3a1512;
+    --neutral: #c9c4b4;
+    --neutral-bg: #2a271c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    padding: 0 20px;
+    padding-block: 40px 64px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  header { margin-bottom: 40px; }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--allow);
+    background: var(--allow-bg);
+    border: 1px solid var(--allow);
+    border-radius: 999px;
+    padding: 4px 12px 4px 10px;
+    margin-bottom: 18px;
+  }
+  .eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--allow);
+    box-shadow: 0 0 0 3px var(--allow-bg);
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 38px);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--accent-ink); background: var(--accent); padding: 0 6px; border-radius: 4px; }
+  :root[data-theme="dark"] h1 em, @media (prefers-color-scheme: dark) { }
+  .lede {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 0 0 22px;
+  }
+  .liveurl {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 16px;
+    box-shadow: var(--shadow);
+  }
+  .liveurl a { color: var(--ink); text-decoration: none; word-break: break-all; }
+  .liveurl a:hover { text-decoration: underline; }
+  .liveurl .tag {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  section.runbook { margin-top: 44px; }
+  .runbook h2 {
+    font-size: 13px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 18px;
+    font-weight: 600;
+  }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .step {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+  }
+  .step .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--surface-2);
+    border-radius: 7px;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600;
+  }
+  .step .caption {
+    font-size: 14.5px;
+    color: var(--ink);
+    margin: 3px 0 10px;
+    line-height: 1.5;
+  }
+  .step .caption b { font-weight: 600; }
+  .req {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    overflow-x: auto;
+    white-space: pre;
+    margin-bottom: 8px;
+  }
+  .req .method { color: var(--accent-ink); background: var(--accent); border-radius: 4px; padding: 1px 6px; font-weight: 600; }
+  .resp {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 3px 9px;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .pill.allow { color: var(--allow); background: var(--allow-bg); }
+  .pill.deny { color: var(--deny); background: var(--deny-bg); }
+  .pill.neutral { color: var(--neutral); background: var(--neutral-bg); }
+  .body {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    overflow-x: auto;
+    white-space: pre;
+    flex: 1 1 260px;
+  }
+
+  .tradeoff {
+    margin-top: 30px;
+    background: var(--surface-2);
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .tradeoff b { color: var(--ink); }
+
+  .links {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .linkcard {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+  .linkcard .k {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 5px;
+  }
+  .linkcard .v { font-size: 14.5px; font-weight: 600; }
+  .linkcard:hover { border-color: var(--accent); }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 480px) {
+    .step { grid-template-columns: 24px 1fr; padding: 14px; }
+    .step .num { width: 24px; height: 24px; font-size: 11px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow"><span class="dot"></span> live · deployed on Azure App Service</span>
+    <h1>The BOLA fix, running <em>live</em>, not just in a test suite.</h1>
+    <p class="lede">
+      Day 32 of the ParkFlow capstone (ADR-001, day-28/piece1): the reservation-ownership check
+      built across days 29–31 is deployed. Every request below ran against the real URL, in this
+      order, moments before this page was published — not simulated, not replayed from a local run.
+    </p>
+    <div class="liveurl">
+      <span class="tag">Try it</span>
+      <a href="https://parkflow-demo-20667.azurewebsites.net/" target="_blank" rel="noopener">https://parkflow-demo-20667.azurewebsites.net</a>
+      &mdash; a real browser frontend now sits at that URL: sign in as a demo user, book a spot, run it
+      through Confirm/Check-in/Complete, and watch the charge total update. What follows on this page
+      is the focused request/response proof of the ownership check specifically — the live site is
+      the fuller demo.
+    </div>
+  </header>
+
+  <section class="runbook">
+    <h2>The run, step by step</h2>
+    <ol class="steps">
+      <li class="step">
+        <span class="num">1</span>
+        <div>
+          <p class="caption">No credentials at all &mdash; the API refuses before it even looks at the route.</p>
+          <div class="req"><span class="method">POST</span> /api/v1/reservations/&lt;id&gt;/cancel</div>
+          <div class="resp"><span class="pill deny">401 Unauthorized</span></div>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">2</span>
+        <div>
+          <p class="caption"><b>userA</b> books a spot with a valid API key.</p>
+          <div class="req"><span class="method">POST</span> /api/v1/reservations &nbsp;-H X-Api-Key</div>
+          <div class="resp">
+            <span class="pill allow">201 Created</span>
+            <span class="body">{"reservationId":"f20a9e69-e296-4063-9549-fdb15e3a50b8"}</span>
+          </div>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">3</span>
+        <div>
+          <p class="caption">Mint real per-user tokens for <b>userA</b> (the owner) and <b>userB</b> (a stranger).</p>
+          <div class="req"><span class="method">POST</span> /api/v1/dev/token &nbsp;{"user":"userA"} / {"user":"userB"}</div>
+          <div class="resp"><span class="pill neutral">200 OK</span><span class="body">{"token":"eyJhbGciOi…"}</span></div>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">4</span>
+        <div>
+          <p class="caption"><b>userB</b> has a genuinely valid key + token &mdash; just not for this reservation.</p>
+          <div class="req"><span class="method">POST</span> /api/v1/reservations/f20a9e69…/cancel &nbsp;-H "Bearer userB"</div>
+          <div class="resp">
+            <span class="pill deny">403 Forbidden</span>
+            <span class="body">{"error":"You do not own this reservation."}</span>
+          </div>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">5</span>
+        <div>
+          <p class="caption"><b>userA</b>, the actual owner, cancels it.</p>
+          <div class="req"><span class="method">POST</span> /api/v1/reservations/f20a9e69…/cancel &nbsp;-H "Bearer userA"</div>
+          <div class="resp"><span class="pill allow">204 No Content</span></div>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">6</span>
+        <div>
+          <p class="caption">Cancelling it again is a business-state failure now &mdash; not an auth one.</p>
+          <div class="req"><span class="method">POST</span> /api/v1/reservations/f20a9e69…/cancel &nbsp;-H "Bearer userA"</div>
+          <div class="resp"><span class="pill neutral">400 Bad Request</span></div>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">7</span>
+        <div>
+          <p class="caption">A reservation that never existed reports 404, distinct from the 403 above.</p>
+          <div class="req"><span class="method">POST</span> /api/v1/reservations/99999999…/cancel &nbsp;-H "Bearer userA"</div>
+          <div class="resp">
+            <span class="pill neutral">404 Not Found</span>
+            <span class="body">{"error":"Reservation not found."}</span>
+          </div>
+        </div>
+      </li>
+    </ol>
+
+    <div class="tradeoff">
+      <b>Why /dev/token answers on a live URL:</b> this deployment runs
+      <code>ASPNETCORE_ENVIRONMENT=Development</code> specifically so step 3 is possible to demo &mdash;
+      day-27's threat model documents that same endpoint failing closed (a 404) outside
+      <code>Development</code> everywhere else this app has run. A real launch would use a real
+      identity provider (Build Day 32's stretch goal) instead of trading that control away. See
+      the postmortem for the full reasoning.
+    </div>
+  </section>
+
+  <div class="links">
+    <a class="linkcard" href="https://parkflow-demo-20667.azurewebsites.net/" target="_blank" rel="noopener">
+      <span class="k">Live app</span><span class="v">Book a spot, see the charge</span>
+    </a>
+    <a class="linkcard" href="https://parkflow-demo-20667.azurewebsites.net/health" target="_blank" rel="noopener">
+      <span class="k">Live API</span><span class="v">/health &amp; /openapi/v1.json</span>
+    </a>
+    <a class="linkcard" href="https://github.com/thinkbridge-thinkschool/thinkschool-Shagun_Yadav/tree/main/day-32/piece1" target="_blank" rel="noopener">
+      <span class="k">Source</span><span class="v">day-32/piece1 on GitHub</span>
+    </a>
+  </div>
+
+  <footer>
+    ParkFlow &middot; ADR-001 reservation-ownership fix &middot; days 27&ndash;32 &middot; EF Core InMemory, resets on restart &mdash; the reservation id above won't resolve after a redeploy.
+  </footer>
+</div>
