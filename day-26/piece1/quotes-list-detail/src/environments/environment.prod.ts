@@ -5,7 +5,7 @@ export const environment = {
   // in appsettings.Production.json) is what makes this browser call legal,
   // not this URL. Filled in with the real App Service hostname at deploy
   // time - see infra/README.md.
-  apiBaseUrl: 'https://syquotes17-api.azurewebsites.net/api/quotes/',
+  apiBaseUrl: 'https://syquotes26dev-api.azurewebsites.net/api/quotes/',
   // Same App Service, no path - jobs.service.ts and service-bus.service.ts
   // build their base URLs as `${apiOrigin}/api/...`. A real bug this exercise
   // caught live: both of those services originally hardcoded a relative
@@ -16,7 +16,7 @@ export const environment = {
   // against the SWA's own origin instead of the API, silently hit the SPA's
   // navigation fallback, and got back index.html instead of JSON. See
   // verification-log.md.
-  apiOrigin: 'https://syquotes17-api.azurewebsites.net',
+  apiOrigin: 'https://syquotes26dev-api.azurewebsites.net',
   // Same app registration as environment.ts, different redirectUri - Entra ID
   // validates the redirect URI against the exact list registered on the SPA
   // app (see README "MI wiring + Entra ID app registrations"), so production
@@ -30,9 +30,16 @@ export const environment = {
   // actually used anywhere.
   authEnabled: true,
   msal: {
-    clientId: '335b9c06-58f9-4bc3-8732-b3f16bcf39e6',
+    // Own app registration (syquotes26dev-spa), not day-25's 335b9c06 - that
+    // one is owned by a different Entra account than the one this deployment
+    // runs under, so its redirect-URI allow-list couldn't be edited here.
+    // Targets the SAME API app (fbc2f15a) and the SAME exposed scope
+    // (access_as_user) via requiredResourceAccess - the API only validates
+    // audience/tenant on the token, not which client requested it, so this
+    // works identically from the backend's point of view.
+    clientId: 'c2c20640-ec14-4ef2-aa98-c63889c016f5',
     authority: 'https://login.microsoftonline.com/8d46a076-d093-416d-a57b-8692cde13bf8',
-    redirectUri: 'https://black-desert-0fde3f100.7.azurestaticapps.net',
+    redirectUri: 'https://gray-wave-009757500.5.azurestaticapps.net',
     apiScope: 'api://fbc2f15a-e32e-4e04-9a55-9dc796093009/access_as_user',
   },
 };

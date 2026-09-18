@@ -159,7 +159,7 @@ module alerts 'modules/alerts.bicep' = {
   scope: rg
   params: {
     location: location
-    appInsightsId: resourceId('Microsoft.Insights/components', appInsights.outputs.appInsightsName)
+    appInsightsId: appInsights.outputs.appInsightsId
     errorRateThreshold: errorRateAlertThreshold
   }
 }
